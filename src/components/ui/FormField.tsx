@@ -1,6 +1,16 @@
-import { StyleSheet, Text, TextInput, View } from "react-native";
+import { useCallback, useState } from "react";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { COLORS, CONTROL_HEIGHT, RADII, SPACING } from "@/src/theme/tokens";
+import Feather from "@expo/vector-icons/Feather";
+
+import {
+  COLORS,
+  CONTROL_HEIGHT,
+  MINIMUM_TOUCH_SIZE,
+  RADII,
+  SPACING,
+  TYPOGRAPHY,
+} from "@/src/theme/tokens";
 
 interface FormFieldProps {
   label: string;
@@ -9,8 +19,11 @@ interface FormFieldProps {
   placeholder: string;
   errorMessage?: string;
   isSecure?: boolean;
-  keyboardType?: "default" | "email-address" | "number-pad";
+  allowsSecureTextReveal?: boolean;
+  keyboardType?: "default" | "email-address" | "number-pad" | "phone-pad";
   maxLength?: number;
+  isMultiline?: boolean;
+  textCapitalization?: "none" | "sentences";
 }
 
 function FormField({
@@ -20,25 +33,54 @@ function FormField({
   placeholder,
   errorMessage,
   isSecure = false,
+  allowsSecureTextReveal = false,
   keyboardType = "default",
   maxLength,
+  isMultiline = false,
+  textCapitalization = "none",
 }: FormFieldProps) {
+  const [isSecureTextVisible, setIsSecureTextVisible] = useState(false);
+  const isRevealAvailable = isSecure && allowsSecureTextReveal;
+  const handleToggleSecureText = useCallback(() => {
+    setIsSecureTextVisible((currentValue) => !currentValue);
+  }, []);
+
   return (
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
-      <TextInput
-        accessibilityLabel={label}
-        autoCapitalize="none"
-        autoCorrect={false}
-        keyboardType={keyboardType}
-        maxLength={maxLength}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={COLORS.inkMuted}
-        secureTextEntry={isSecure}
-        style={[styles.input, errorMessage ? styles.inputError : undefined]}
-        value={value}
-      />
+      <View style={[styles.inputContainer, errorMessage ? styles.inputError : undefined]}>
+        <TextInput
+          accessibilityLabel={label}
+          autoCapitalize={textCapitalization}
+          autoCorrect={false}
+          keyboardType={keyboardType}
+          maxLength={maxLength}
+          multiline={isMultiline}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={COLORS.inkMuted}
+          secureTextEntry={isSecure && !isSecureTextVisible}
+          style={[styles.input, isMultiline ? styles.multiline : undefined]}
+          value={value}
+        />
+        {isRevealAvailable ? (
+          <Pressable
+            accessibilityLabel={isSecureTextVisible ? "Hide password" : "Show password"}
+            accessibilityRole="button"
+            hitSlop={SPACING.small}
+            onPress={handleToggleSecureText}
+            style={styles.revealButton}
+          >
+            <Feather
+              accessibilityElementsHidden
+              color={COLORS.inkMuted}
+              importantForAccessibility="no-hide-descendants"
+              name={isSecureTextVisible ? "eye-off" : "eye"}
+              size={20}
+            />
+          </Pressable>
+        ) : null}
+      </View>
       {errorMessage ? (
         <Text accessibilityLiveRegion="polite" style={styles.errorText}>
           {errorMessage}
@@ -56,24 +98,40 @@ const styles = StyleSheet.create({
   },
   label: {
     color: COLORS.ink,
-    fontSize: 14,
+    ...TYPOGRAPHY.body,
     fontWeight: "600",
   },
-  input: {
+  inputContainer: {
     backgroundColor: COLORS.surface,
     borderColor: COLORS.border,
     borderRadius: RADII.medium,
     borderWidth: 1,
+    flexDirection: "row",
+  },
+  input: {
     color: COLORS.ink,
-    fontSize: 16,
-    height: CONTROL_HEIGHT,
+    flex: 1,
+    ...TYPOGRAPHY.control,
+    minHeight: CONTROL_HEIGHT,
     paddingHorizontal: SPACING.large,
   },
   inputError: {
     borderColor: COLORS.danger,
   },
+  multiline: {
+    height: "auto",
+    minHeight: 96,
+    paddingTop: SPACING.medium,
+    textAlignVertical: "top",
+  },
+  revealButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: MINIMUM_TOUCH_SIZE,
+    width: MINIMUM_TOUCH_SIZE,
+  },
   errorText: {
     color: COLORS.danger,
-    fontSize: 13,
+    ...TYPOGRAPHY.caption,
   },
 });

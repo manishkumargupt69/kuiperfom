@@ -1,6 +1,12 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text } from "react-native";
 
-import { COLORS, CONTROL_HEIGHT, RADII } from "@/src/theme/tokens";
+import {
+  COLORS,
+  CONTROL_HEIGHT,
+  RADII,
+  SPACING,
+  TYPOGRAPHY,
+} from "@/src/theme/tokens";
 
 interface PrimaryButtonProps {
   label: string;
@@ -46,9 +52,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: COLORS.accent,
     borderRadius: RADII.medium,
-    height: CONTROL_HEIGHT,
+    minHeight: CONTROL_HEIGHT,
     justifyContent: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: SPACING.large,
   },
   buttonPressed: {
     backgroundColor: COLORS.accentPressed,
@@ -58,7 +64,7 @@ const styles = StyleSheet.create({
   },
   label: {
     color: COLORS.white,
-    fontSize: 16,
-    fontWeight: "700",
+    ...TYPOGRAPHY.control,
+    fontWeight: "600",
   },
 });
