@@ -13,6 +13,7 @@ interface AuthState {
   hydrate: () => Promise<void>;
   signIn: (session: AuthSession) => Promise<void>;
   signInForCurrentRun: (session: AuthSession) => void;
+  markMpinConfigured: () => void;
   signOut: () => Promise<void>;
 }
 
@@ -29,6 +30,18 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
   signInForCurrentRun: (session: AuthSession): void => {
     set({ session });
+  },
+  markMpinConfigured: (): void => {
+    set((state) =>
+      state.session
+        ? {
+            session: {
+              ...state.session,
+              user: { ...state.session.user, hasMpin: true },
+            },
+          }
+        : state,
+    );
   },
   signOut: async (): Promise<void> => {
     await removeStoredSession();

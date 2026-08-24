@@ -1,12 +1,9 @@
-import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
 
 const MPIN_STORAGE_KEY = "fom.auth.mpin";
 
 interface StoredMpin {
   userId: string;
-  salt: string;
-  digest: string;
 }
 
 const isStoredMpin = (value: unknown): value is StoredMpin => {
@@ -16,17 +13,9 @@ const isStoredMpin = (value: unknown): value is StoredMpin => {
 
   const candidate = value as Record<string, unknown>;
   return (
-    typeof candidate.userId === "string" &&
-    typeof candidate.salt === "string" &&
-    typeof candidate.digest === "string"
+    typeof candidate.userId === "string"
   );
 };
-
-const createDigest = async (mpin: string, salt: string): Promise<string> =>
-  Crypto.digestStringAsync(
-    Crypto.CryptoDigestAlgorithm.SHA256,
-    `${salt}:${mpin}`,
-  );
 
 const loadStoredMpin = async (): Promise<StoredMpin | null> => {
   const value = await SecureStore.getItemAsync(MPIN_STORAGE_KEY);
@@ -47,25 +36,10 @@ const loadStoredMpin = async (): Promise<StoredMpin | null> => {
   }
 };
 
-export const hasConfiguredMpin = async (): Promise<boolean> =>
-  Boolean(await loadStoredMpin());
+export const getConfiguredMpinUserId = async (): Promise<string | null> =>
+  (await loadStoredMpin())?.userId ?? null;
 
-export const configureMpin = async (
-  userId: string,
-  mpin: string,
-): Promise<void> => {
-  const salt = Crypto.randomUUID();
-  const digest = await createDigest(mpin, salt);
-  const storedMpin: StoredMpin = { userId, salt, digest };
+export const configureMpin = async (userId: string): Promise<void> => {
+  const storedMpin: StoredMpin = { userId };
   await SecureStore.setItemAsync(MPIN_STORAGE_KEY, JSON.stringify(storedMpin));
-};
-
-export const verifyMpin = async (mpin: string): Promise<string | null> => {
-  const storedMpin = await loadStoredMpin();
-  if (!storedMpin) {
-    return null;
-  }
-
-  const candidateDigest = await createDigest(mpin, storedMpin.salt);
-  return candidateDigest === storedMpin.digest ? storedMpin.userId : null;
 };

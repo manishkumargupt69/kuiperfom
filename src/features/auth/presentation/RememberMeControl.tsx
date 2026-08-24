@@ -1,4 +1,6 @@
+import type { ReactElement } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import Feather from "@expo/vector-icons/Feather";
 
 import { COLORS, MINIMUM_TOUCH_SIZE, RADII, SPACING } from "@/src/theme/tokens";
 
@@ -10,7 +12,7 @@ interface RememberMeControlProps {
 function RememberMeControl({
   isSelected,
   onToggle,
-}: RememberMeControlProps) {
+}: RememberMeControlProps): ReactElement {
   return (
     <Pressable
       accessibilityRole="checkbox"
@@ -20,7 +22,9 @@ function RememberMeControl({
       style={styles.container}
     >
       <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-        {isSelected ? <Text style={styles.checkmark}></Text> : null}
+        {isSelected ? (
+          <Feather color={COLORS.white} name="check" size={16} />
+        ) : null}
       </View>
       <Text style={styles.label}>Remember me on this device</Text>
     </Pressable>
@@ -48,11 +52,6 @@ const styles = StyleSheet.create({
   checkboxSelected: {
     backgroundColor: COLORS.accent,
     borderColor: COLORS.accent,
-  },
-  checkmark: {
-    color: COLORS.white,
-    fontSize: 16,
-    fontWeight: "800",
   },
   label: {
     color: COLORS.ink,

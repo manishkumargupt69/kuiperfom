@@ -1,58 +1,72 @@
 import { useCallback, useEffect, useState } from "react";
+import { Alert } from "react-native";
 import { router } from "expo-router";
 
-import { authRepository } from "@/src/features/auth/data/mock-auth.repository";
+import { authRepository } from "@/src/features/auth/data/auth.repository";
 import {
-  hasConfiguredMpin,
-  verifyMpin,
+  getConfiguredMpinUserId,
 } from "@/src/features/auth/data/mpin.service";
-import type { AuthMode } from "@/src/features/auth/domain/auth.types";
+import {
+  loadRememberedCredentials,
+  removeRememberedCredentials,
+  storeRememberedCredentials,
+} from "@/src/features/auth/data/remembered-credentials-storage";
+import type {
+  AuthMode,
+  RememberedCredentials,
+} from "@/src/features/auth/domain/auth.types";
 import { useAuthStore } from "@/src/features/auth/state/auth-store";
 
 const MPIN_PATTERN = /^\d{4}$/;
-const OTP_PATTERN = /^\d{4,6}$/;
 
 interface SignInFields {
   userId: string;
   password: string;
-  otp: string;
   mpin: string;
 }
 
 interface FieldErrors {
   userId?: string;
   password?: string;
-  otp?: string;
   mpin?: string;
 }
 
 const INITIAL_FIELDS: SignInFields = {
   userId: "",
   password: "",
-  otp: "",
   mpin: "",
 };
+
+const askToUpdateSavedPassword = (): Promise<boolean> =>
+  new Promise<boolean>((resolve) => {
+    Alert.alert(
+      "Update saved password?",
+      "The password you entered is different from the one saved on this device.",
+      [
+        { text: "Keep saved password", onPress: () => resolve(false) },
+        { text: "Update password", onPress: () => resolve(true) },
+      ],
+      { cancelable: false },
+    );
+  });
 
 const getValidationErrors = (
   mode: AuthMode,
   fields: SignInFields,
 ): FieldErrors => {
   if (mode === "mpin") {
-    return MPIN_PATTERN.test(fields.mpin)
-      ? {}
-      : { mpin: "Enter your 4-digit MPIN." };
+    if (!fields.userId.trim()) {
+      return { userId: "Enter your user ID." };
+    }
+    return MPIN_PATTERN.test(fields.mpin) ? {} : { mpin: "Enter your 4-digit MPIN." };
   }
 
   if (!fields.userId.trim()) {
     return { userId: "Enter your user ID." };
   }
 
-  if (mode === "credentials" && !fields.password) {
+  if (!fields.password) {
     return { password: "Enter your password." };
-  }
-
-  if (mode === "otp" && !OTP_PATTERN.test(fields.otp)) {
-    return { otp: "Enter the OTP sent to you." };
   }
 
   return {};
@@ -69,17 +83,31 @@ export const useSignIn = () => {
   const [mode, setMode] = useState<AuthMode>("credentials");
   const [fields, setFields] = useState<SignInFields>(INITIAL_FIELDS);
   const [errors, setErrors] = useState<FieldErrors>({});
-  const [isRemembered, setIsRemembered] = useState(true);
+  const [isRemembered, setIsRemembered] = useState(false);
+  const [rememberedCredentials, setRememberedCredentials] =
+    useState<RememberedCredentials | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isOtpRequested, setIsOtpRequested] = useState(false);
-  const [isMpinAvailable, setIsMpinAvailable] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadMpinAvailability = async (): Promise<void> => {
-      setIsMpinAvailable(await hasConfiguredMpin());
+    const loadSignInPreferences = async (): Promise<void> => {
+      try {
+        const [configuredMpinUserId, savedCredentials] = await Promise.all([
+          getConfiguredMpinUserId(),
+          loadRememberedCredentials(),
+        ]);
+        setRememberedCredentials(savedCredentials);
+        if (savedCredentials || configuredMpinUserId) {
+          setFields((current) => ({ ...current, userId: savedCredentials?.userId ?? configuredMpinUserId ?? "", password: savedCredentials?.password ?? "" }));
+        }
+        if (savedCredentials) {
+          setIsRemembered(true);
+        }
+      } catch {
+        setNotice("Saved sign-in details could not be loaded.");
+      }
     };
-    void loadMpinAvailability();
+    void loadSignInPreferences();
   }, []);
 
   const updateField = useCallback(
@@ -97,22 +125,6 @@ export const useSignIn = () => {
     setNotice(null);
   }, []);
 
-  const requestOtp = useCallback(async (): Promise<void> => {
-    if (!fields.userId.trim()) {
-      setErrors({ userId: "Enter your user ID before requesting an OTP." });
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      await authRepository.requestOtp(fields.userId.trim());
-      setIsOtpRequested(true);
-      setNotice("Development mode: enter any 4-6 digit OTP.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [fields.userId]);
-
   const submit = useCallback(async (): Promise<void> => {
     const nextErrors = getValidationErrors(mode, fields);
     setErrors(nextErrors);
@@ -129,12 +141,30 @@ export const useSignIn = () => {
               userId: fields.userId.trim(),
               password: fields.password,
             })
-          : mode === "otp"
-            ? await authRepository.loginWithOtp({
-                userId: fields.userId.trim(),
-                otp: fields.otp,
-              })
-            : await loginWithVerifiedMpin(fields.mpin);
+          : await authRepository.loginWithMpin(fields.userId.trim(), fields.mpin);
+
+      if (mode === "credentials" && isRemembered) {
+        const enteredCredentials = {
+          userId: fields.userId.trim(),
+          password: fields.password,
+        };
+        const shouldStoreCredentials =
+          !rememberedCredentials ||
+          rememberedCredentials.userId !== enteredCredentials.userId ||
+          (rememberedCredentials.password !== enteredCredentials.password &&
+            (await askToUpdateSavedPassword()));
+        if (shouldStoreCredentials) {
+          try {
+            await storeRememberedCredentials(enteredCredentials);
+            setRememberedCredentials(enteredCredentials);
+          } catch {
+            Alert.alert(
+              "Password not saved",
+              "You are signed in, but this device could not save your password.",
+            );
+          }
+        }
+      }
 
       if (isRemembered) {
         await signInPersisted(session);
@@ -147,7 +177,29 @@ export const useSignIn = () => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [fields, isRemembered, mode, signInForCurrentRun, signInPersisted]);
+  }, [
+    fields,
+    isRemembered,
+    mode,
+    rememberedCredentials,
+    signInForCurrentRun,
+    signInPersisted,
+  ]);
+
+  const toggleRemembered = useCallback(async (): Promise<void> => {
+    const shouldRemember = !isRemembered;
+    setIsRemembered(shouldRemember);
+    if (shouldRemember) {
+      return;
+    }
+
+    try {
+      await removeRememberedCredentials();
+      setRememberedCredentials(null);
+    } catch {
+      setNotice("Saved sign-in details could not be removed.");
+    }
+  }, [isRemembered]);
 
   return {
     mode,
@@ -155,23 +207,11 @@ export const useSignIn = () => {
     errors,
     isRemembered,
     isSubmitting,
-    isOtpRequested,
-    isMpinAvailable,
+    isMpinAvailable: true,
     notice,
     selectMode,
     updateField,
-    toggleRemembered: () => setIsRemembered((current) => !current),
-    requestOtp,
+    toggleRemembered,
     submit,
-    showForgotPasswordNotice: () =>
-      setNotice("Password recovery will be enabled with the FOM backend."),
   };
-};
-
-const loginWithVerifiedMpin = async (mpin: string) => {
-  const userId = await verifyMpin(mpin);
-  if (!userId) {
-    throw new Error("Invalid MPIN");
-  }
-  return authRepository.loginWithMpin(userId);
 };

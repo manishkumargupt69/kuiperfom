@@ -11,7 +11,6 @@ interface AuthModeSelectorProps {
 
 const AUTH_MODES: readonly { mode: AuthMode; label: string }[] = [
   { mode: "credentials", label: "Password" },
-  { mode: "otp", label: "OTP" },
   { mode: "mpin", label: "MPIN" },
 ];
 
