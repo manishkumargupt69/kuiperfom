@@ -30,6 +30,7 @@ export default function WorkDetailScreen(): ReactElement {
     isRecording,
     recordingDurationMilliseconds,
     addDocument,
+    addFromGallery,
     addPhoto,
     addVideo,
     toggleVoiceRecording,
@@ -54,7 +55,6 @@ export default function WorkDetailScreen(): ReactElement {
       <AppHeader onBack={handleBack} title="Update Work Record" />
       {viewState.status === "success" ? (
         <ScrollView
-          automaticallyAdjustKeyboardInsets
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -65,6 +65,7 @@ export default function WorkDetailScreen(): ReactElement {
             isRecording={isRecording}
             item={viewState.data}
             onAddDocument={addDocument}
+            onAddFromGallery={addFromGallery}
             onAddPhoto={addPhoto}
             onAddVideo={addVideo}
             onCompletionChange={setCompletionPercentage}
@@ -103,9 +104,9 @@ export default function WorkDetailScreen(): ReactElement {
 const styles = StyleSheet.create({
   scroll: { paddingBottom: SPACING.section },
   footer: {
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.surface,
     borderTopColor: COLORS.border,
-    borderTopWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
     padding: SCREEN_HORIZONTAL_PADDING,
   },
 });

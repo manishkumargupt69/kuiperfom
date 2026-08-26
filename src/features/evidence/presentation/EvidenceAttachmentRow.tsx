@@ -1,6 +1,6 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import type { ComponentProps, ReactElement } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import type { PressableStateCallbackType, StyleProp, ViewStyle } from "react-native";
 import Feather from "@expo/vector-icons/Feather";
 
@@ -40,6 +40,10 @@ function EvidenceAttachmentRow({
 }: EvidenceAttachmentRowProps): ReactElement {
   const handleOpen = (): void => onOpen(attachment);
   const handleRemove = (): void => onRemove?.(attachment.id);
+  const imageSource = useMemo(
+    () => ({ uri: attachment.uri }),
+    [attachment.uri],
+  );
 
   return (
     <View style={styles.container}>
@@ -50,15 +54,24 @@ function EvidenceAttachmentRow({
         onPress={handleOpen}
         style={getPreviewStyle}
       >
-        <View style={styles.icon}>
-          <Feather
-            accessibilityElementsHidden
-            color={COLORS.accent}
-            importantForAccessibility="no-hide-descendants"
-            name={EVIDENCE_ICONS[attachment.kind]}
-            size={20}
+        {attachment.kind === "photo" ? (
+          <Image
+            accessibilityIgnoresInvertColors
+            resizeMode="cover"
+            source={imageSource}
+            style={styles.thumbnail}
           />
-        </View>
+        ) : (
+          <View style={styles.icon}>
+            <Feather
+              accessibilityElementsHidden
+              color={COLORS.accent}
+              importantForAccessibility="no-hide-descendants"
+              name={EVIDENCE_ICONS[attachment.kind]}
+              size={20}
+            />
+          </View>
+        )}
         <View style={styles.copy}>
           <Text numberOfLines={1} style={styles.name}>
             {attachment.name}
@@ -116,6 +129,12 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: "center",
     width: 40,
+  },
+  thumbnail: {
+    backgroundColor: COLORS.surfaceMuted,
+    borderRadius: RADII.small,
+    height: 48,
+    width: 48,
   },
   copy: { flex: 1, gap: SPACING.extraSmall },
   name: { color: COLORS.ink, ...TYPOGRAPHY.body, fontWeight: "600" },

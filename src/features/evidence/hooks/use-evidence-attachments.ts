@@ -10,7 +10,10 @@ import {
   useAudioRecorderState,
 } from "expo-audio";
 
-import { createEvidenceAttachment } from "@/src/features/evidence/data/evidence-file.service";
+import {
+  createEvidenceAttachment,
+  MAX_EVIDENCE_CONTENT_BYTES,
+} from "@/src/features/evidence/data/evidence-file.service";
 import type { EvidenceAttachment } from "@/src/types/evidence";
 
 const DEFAULT_MIME_TYPE = "application/octet-stream";
@@ -22,6 +25,7 @@ interface EvidenceAttachmentsResult {
   isRecording: boolean;
   recordingDurationMilliseconds: number;
   addDocument: () => Promise<void>;
+  addFromGallery: () => Promise<void>;
   addPhoto: () => Promise<void>;
   addVideo: () => Promise<void>;
   toggleVoiceRecording: () => Promise<void>;
@@ -31,6 +35,30 @@ interface EvidenceAttachmentsResult {
 const showEvidenceError = (message: string): void => {
   Alert.alert("Evidence unavailable", message);
 };
+
+const getMediaKind = (
+  asset: ImagePicker.ImagePickerAsset,
+): "photo" | "video" =>
+  asset.type === "video" || asset.mimeType?.startsWith("video/")
+    ? "video"
+    : "photo";
+
+const getRemainingEvidenceBytes = (
+  attachments: readonly EvidenceAttachment[],
+): number =>
+  MAX_EVIDENCE_CONTENT_BYTES -
+  attachments.reduce(
+    (totalBytes, attachment) => totalBytes + (attachment.sizeBytes ?? 0),
+    0,
+  );
+
+const getEvidenceErrorMessage = ({
+  error,
+  fallbackMessage,
+}: {
+  error: unknown;
+  fallbackMessage: string;
+}): string => (error instanceof Error ? error.message : fallbackMessage);
 
 export const useEvidenceAttachments = (
   initialAttachments: readonly EvidenceAttachment[] = EMPTY_ATTACHMENTS,
@@ -62,30 +90,89 @@ export const useEvidenceAttachments = (
 
       const asset = result.assets[0];
       appendAttachment(
-        createEvidenceAttachment({
+        await createEvidenceAttachment({
           kind: "document",
+          maximumSizeBytes: getRemainingEvidenceBytes(attachments),
           mimeType: asset.mimeType ?? DEFAULT_MIME_TYPE,
           name: asset.name,
-          sizeBytes: asset.size,
           sourceUri: asset.uri,
         }),
       );
-    } catch {
-      showEvidenceError("The selected file could not be attached.");
+    } catch (error: unknown) {
+      showEvidenceError(
+        getEvidenceErrorMessage({
+          error,
+          fallbackMessage: "The selected file could not be attached.",
+        }),
+      );
     }
-  }, [appendAttachment]);
+  }, [appendAttachment, attachments]);
 
-  const selectMedia = useCallback(
+  const appendMediaAsset = useCallback(
+    async ({
+      asset,
+      kind,
+    }: {
+      asset: ImagePicker.ImagePickerAsset;
+      kind: "photo" | "video";
+    }): Promise<void> => {
+      const fallbackName =
+        kind === "photo"
+          ? `photo-${Date.now()}.jpg`
+          : `video-${Date.now()}.mp4`;
+      return appendAttachment(
+        await createEvidenceAttachment({
+          durationMilliseconds: asset.duration ?? undefined,
+          kind,
+          maximumSizeBytes: getRemainingEvidenceBytes(attachments),
+          mimeType:
+            asset.mimeType ??
+            (kind === "photo" ? "image/jpeg" : "video/mp4"),
+          name: asset.fileName ?? fallbackName,
+          sourceUri: asset.uri,
+        }),
+      );
+    },
+    [appendAttachment, attachments],
+  );
+
+  const addFromGallery = useCallback(async (): Promise<void> => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        showEvidenceError("Allow media access to attach evidence.");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        allowsEditing: false,
+        mediaTypes: ["images", "videos"],
+        quality: 1,
+      });
+      if (result.canceled) return;
+
+      const asset = result.assets[0];
+      await appendMediaAsset({ asset, kind: getMediaKind(asset) });
+    } catch (error: unknown) {
+      showEvidenceError(
+        getEvidenceErrorMessage({
+          error,
+          fallbackMessage: "The selected media could not be attached.",
+        }),
+      );
+    }
+  }, [appendMediaAsset]);
+
+  const captureMedia = useCallback(
     async (kind: "photo" | "video"): Promise<void> => {
       try {
-        const permission =
-          await ImagePicker.requestMediaLibraryPermissionsAsync();
+        const permission = await ImagePicker.requestCameraPermissionsAsync();
         if (!permission.granted) {
-          showEvidenceError("Allow media access to attach evidence.");
+          showEvidenceError("Allow camera access to capture evidence.");
           return;
         }
 
-        const result = await ImagePicker.launchImageLibraryAsync({
+        const result = await ImagePicker.launchCameraAsync({
           allowsEditing: false,
           mediaTypes: [kind === "photo" ? "images" : "videos"],
           quality: 1,
@@ -93,33 +180,26 @@ export const useEvidenceAttachments = (
         if (result.canceled) return;
 
         const asset = result.assets[0];
-        const fallbackName = `${kind}-${Date.now()}`;
-        appendAttachment(
-          createEvidenceAttachment({
-            durationMilliseconds: asset.duration ?? undefined,
-            kind,
-            mimeType:
-              asset.mimeType ??
-              (kind === "photo" ? "image/jpeg" : "video/mp4"),
-            name: asset.fileName ?? fallbackName,
-            sizeBytes: asset.fileSize,
-            sourceUri: asset.uri,
+        await appendMediaAsset({ asset, kind });
+      } catch (error: unknown) {
+        showEvidenceError(
+          getEvidenceErrorMessage({
+            error,
+            fallbackMessage: `The ${kind} could not be captured.`,
           }),
         );
-      } catch {
-        showEvidenceError(`The selected ${kind} could not be attached.`);
       }
     },
-    [appendAttachment],
+    [appendMediaAsset],
   );
 
   const addPhoto = useCallback(async (): Promise<void> => {
-    await selectMedia("photo");
-  }, [selectMedia]);
+    await captureMedia("photo");
+  }, [captureMedia]);
 
   const addVideo = useCallback(async (): Promise<void> => {
-    await selectMedia("video");
-  }, [selectMedia]);
+    await captureMedia("video");
+  }, [captureMedia]);
 
   const toggleVoiceRecording = useCallback(async (): Promise<void> => {
     try {
@@ -129,9 +209,10 @@ export const useEvidenceAttachments = (
           throw new Error("Recording file was not created.");
         }
         appendAttachment(
-          createEvidenceAttachment({
+          await createEvidenceAttachment({
             durationMilliseconds: recorderState.durationMillis,
             kind: "audio",
+            maximumSizeBytes: getRemainingEvidenceBytes(attachments),
             mimeType: VOICE_MIME_TYPE,
             name: `voice-note-${Date.now()}.m4a`,
             sourceUri: audioRecorder.uri,
@@ -153,10 +234,15 @@ export const useEvidenceAttachments = (
       });
       await audioRecorder.prepareToRecordAsync();
       audioRecorder.record();
-    } catch {
-      showEvidenceError("The voice note could not be recorded.");
+    } catch (error: unknown) {
+      showEvidenceError(
+        getEvidenceErrorMessage({
+          error,
+          fallbackMessage: "The voice note could not be recorded.",
+        }),
+      );
     }
-  }, [appendAttachment, audioRecorder, recorderState]);
+  }, [appendAttachment, attachments, audioRecorder, recorderState]);
 
   const removeAttachment = useCallback((id: string): void => {
     setAttachments((currentAttachments) =>
@@ -169,6 +255,7 @@ export const useEvidenceAttachments = (
     isRecording: recorderState.isRecording,
     recordingDurationMilliseconds: recorderState.durationMillis,
     addDocument,
+    addFromGallery,
     addPhoto,
     addVideo,
     toggleVoiceRecording,

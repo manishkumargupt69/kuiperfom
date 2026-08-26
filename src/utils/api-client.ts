@@ -10,6 +10,162 @@ interface JsonResponse {
   body: unknown;
 }
 
+interface ReactNativeFormDataReader {
+  getParts: () => readonly unknown[];
+}
+
+interface MultipartPart {
+  fieldName: string;
+  string?: string;
+  uri?: string;
+  name?: string;
+  type?: string;
+  sizeBytes?: number;
+}
+
+interface MultipartFileLog {
+  fieldName: string;
+  name: string;
+  type: string;
+  uri: string;
+  sizeBytes: number | null;
+  sizeMebibytes: number | null;
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const isReactNativeFormDataReader = (
+  value: unknown,
+): value is ReactNativeFormDataReader =>
+  isRecord(value) && typeof value.getParts === "function";
+
+const getOptionalString = (
+  record: Readonly<Record<string, unknown>>,
+  key: string,
+): string | undefined =>
+  typeof record[key] === "string" ? record[key] : undefined;
+
+const getOptionalNumber = (
+  record: Readonly<Record<string, unknown>>,
+  key: string,
+): number | undefined =>
+  typeof record[key] === "number" ? record[key] : undefined;
+
+const toMultipartPart = (value: unknown): MultipartPart | null => {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const fieldName = getOptionalString(value, "fieldName");
+  if (!fieldName) {
+    return null;
+  }
+
+  return {
+    fieldName,
+    string: getOptionalString(value, "string"),
+    uri: getOptionalString(value, "uri"),
+    name: getOptionalString(value, "name"),
+    type: getOptionalString(value, "type"),
+    sizeBytes: getOptionalNumber(value, "sizeBytes"),
+  };
+};
+
+const quoteShellValue = (value: string): string =>
+  `'${value.replace(/'/g, "'\\''")}'`;
+
+const getCurlFilePath = (uri: string): string => {
+  if (!uri.startsWith("file://")) {
+    return uri;
+  }
+
+  try {
+    return decodeURIComponent(uri.slice("file://".length));
+  } catch {
+    return uri.slice("file://".length);
+  }
+};
+
+const getMultipartArguments = (body: FormData): string[] => {
+  if (!isReactNativeFormDataReader(body)) {
+    return [];
+  }
+
+  return body.getParts().flatMap((value) => {
+    const part = toMultipartPart(value);
+    if (!part) {
+      return [];
+    }
+
+    if (part.string !== undefined) {
+      return [`--form ${quoteShellValue(`${part.fieldName}=${part.string}`)}`];
+    }
+
+    if (!part.uri) {
+      return [];
+    }
+
+    const typeParameter = part.type ? `;type=${part.type}` : "";
+    const nameParameter = part.name ? `;filename=${part.name}` : "";
+    const fileValue = `${part.fieldName}=@${getCurlFilePath(part.uri)}${typeParameter}${nameParameter}`;
+    return [`--form ${quoteShellValue(fileValue)}`];
+  });
+};
+
+const getMultipartFileLogs = (body: unknown): MultipartFileLog[] => {
+  if (!(body instanceof FormData) || !isReactNativeFormDataReader(body)) {
+    return [];
+  }
+
+  return body.getParts().flatMap((value) => {
+    const part = toMultipartPart(value);
+    if (!part?.uri) {
+      return [];
+    }
+
+    return [{
+      fieldName: part.fieldName,
+      name: part.name ?? "Unnamed file",
+      type: part.type ?? "application/octet-stream",
+      uri: part.uri,
+      sizeBytes: part.sizeBytes ?? null,
+      sizeMebibytes:
+        part.sizeBytes === undefined
+          ? null
+          : Number((part.sizeBytes / (1024 * 1024)).toFixed(2)),
+    }];
+  });
+};
+
+const getBodyArguments = (body: unknown): string[] => {
+  if (body === undefined) {
+    return [];
+  }
+
+  if (body instanceof FormData) {
+    return getMultipartArguments(body);
+  }
+
+  const serializedBody = JSON.stringify(body);
+  return serializedBody === undefined
+    ? []
+    : [`--data-raw ${quoteShellValue(serializedBody)}`];
+};
+
+const buildCurlCommand = ({ url, method, headers, body }: ApiRequest): string => {
+  const argumentsList = [
+    `--request ${quoteShellValue(method.toUpperCase())}`,
+    `--url ${quoteShellValue(url)}`,
+    ...Object.entries(headers).map(
+      ([name, value]) => `--header ${quoteShellValue(`${name}: ${value}`)}`,
+    ),
+    ...getBodyArguments(body),
+  ];
+
+  return `curl \\\n  ${argumentsList.join(" \\\n  ")}`;
+};
+
 const readResponseBody = async (response: Response): Promise<unknown> => {
   const responseText = await response.text();
   if (!responseText) {
@@ -18,7 +174,16 @@ const readResponseBody = async (response: Response): Promise<unknown> => {
 
   try {
     const responseBody: unknown = JSON.parse(responseText);
-    return responseBody;
+    if (typeof responseBody !== "string") {
+      return responseBody;
+    }
+
+    try {
+      const nestedResponseBody: unknown = JSON.parse(responseBody);
+      return nestedResponseBody;
+    } catch {
+      return responseBody;
+    }
   } catch {
     return responseText;
   }
@@ -26,10 +191,20 @@ const readResponseBody = async (response: Response): Promise<unknown> => {
 
 const logRequest = ({ url, method, headers, body }: ApiRequest): void => {
   if (__DEV__) {
+    const multipartFiles = getMultipartFileLogs(body);
     console.log(`[API Request] ${method} ${url}`, {
       headers,
       body,
     });
+    if (multipartFiles.length > 0) {
+      console.log(`[API Files] ${method} ${url}`, multipartFiles);
+    }
+    console.log(`[API cURL] ${method} ${url}\n${buildCurlCommand({
+      url,
+      method,
+      headers,
+      body,
+    })}`);
   }
 };
 

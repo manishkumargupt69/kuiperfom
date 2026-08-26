@@ -52,12 +52,13 @@
         "expo-image-picker",
         {
           "photosPermission": "Allow Field Operations Management to attach photo and video evidence.",
-          "cameraPermission": false,
+          "cameraPermission": "Allow Field Operations Management to capture photo and video evidence.",
           "microphonePermission": "Allow Field Operations Management to record voice notes."
         }
       ],
       "expo-video",
-      "expo-asset"
+      "expo-asset",
+      "react-native-compressor"
     ],
     "experiments": {
       "typedRoutes": true,

@@ -41,6 +41,6 @@ export default function IncidentsScreen(): ReactElement {
 const styles = StyleSheet.create({
   tools: { flexDirection: "row", gap: SPACING.small, paddingHorizontal: SCREEN_HORIZONTAL_PADDING, paddingVertical: SPACING.medium },
   body: { flex: 1, paddingHorizontal: SCREEN_HORIZONTAL_PADDING },
-  list: { paddingBottom: SPACING.section },
-  footer: { backgroundColor: COLORS.background, borderTopColor: COLORS.border, borderTopWidth: 1, padding: SCREEN_HORIZONTAL_PADDING },
+  list: { paddingBottom: SPACING.section, paddingTop: SPACING.extraSmall },
+  footer: { backgroundColor: COLORS.surface, borderTopColor: COLORS.border, borderTopWidth: StyleSheet.hairlineWidth, padding: SCREEN_HORIZONTAL_PADDING },
 });
