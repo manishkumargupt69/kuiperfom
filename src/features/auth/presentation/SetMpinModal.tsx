@@ -52,7 +52,6 @@ export default function SetMpinModal({
       title="Set MPIN"
     >
       <ScrollView
-        automaticallyAdjustKeyboardInsets
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}

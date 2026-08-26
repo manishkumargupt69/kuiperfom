@@ -8,7 +8,8 @@ export default function ScreenContainer({ children }: PropsWithChildren): ReactE
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
-        behavior={Platform.select({ ios: "padding", android: "height" })}
+        behavior="padding"
+        enabled={Platform.OS === "ios"}
         style={styles.keyboardArea}
       >
         <View style={styles.content}>{children}</View>

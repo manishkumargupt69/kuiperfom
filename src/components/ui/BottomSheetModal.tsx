@@ -18,7 +18,6 @@ import {
   MINIMUM_TOUCH_SIZE,
   RADII,
   SPACING,
-  TYPOGRAPHY,
 } from "@/src/theme/tokens";
 
 interface BottomSheetModalProps extends PropsWithChildren {
@@ -39,7 +38,7 @@ export default function BottomSheetModal({
 }: BottomSheetModalProps): ReactElement {
   return (
     <Modal
-      animationType="fade"
+      animationType="slide"
       onRequestClose={onClose}
       statusBarTranslucent
       transparent
@@ -53,7 +52,8 @@ export default function BottomSheetModal({
           style={StyleSheet.absoluteFill}
         />
         <KeyboardAvoidingView
-          behavior={Platform.select({ android: "height", ios: "padding" })}
+          behavior="padding"
+          enabled={Platform.OS === "ios"}
           pointerEvents="box-none"
           style={styles.keyboardArea}
         >
@@ -86,7 +86,7 @@ export default function BottomSheetModal({
 
 const styles = StyleSheet.create({
   overlay: {
-    backgroundColor: "rgba(27, 29, 27, 0.42)",
+    backgroundColor: COLORS.overlay,
     flex: 1,
   },
   keyboardArea: {
@@ -96,8 +96,8 @@ const styles = StyleSheet.create({
   sheet: {
     alignSelf: "center",
     backgroundColor: COLORS.surface,
-    borderTopLeftRadius: RADII.large,
-    borderTopRightRadius: RADII.large,
+    borderTopLeftRadius: RADII.sheet,
+    borderTopRightRadius: RADII.sheet,
     maxHeight: "92%",
     maxWidth: MAX_CONTENT_WIDTH,
     overflow: "hidden",
@@ -107,22 +107,23 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     backgroundColor: COLORS.border,
     borderRadius: RADII.pill,
-    height: 4,
-    marginTop: SPACING.small,
-    width: 40,
+    height: 5,
+    marginTop: SPACING.medium,
+    width: 36,
   },
   header: {
     alignItems: "center",
     borderBottomColor: COLORS.border,
     borderBottomWidth: 1,
     flexDirection: "row",
-    minHeight: MINIMUM_TOUCH_SIZE,
-    paddingLeft: SPACING.extraLarge,
+    minHeight: 60,
+    paddingHorizontal: SPACING.medium,
   },
   title: {
     color: COLORS.ink,
     flex: 1,
-    ...TYPOGRAPHY.control,
+    fontSize: 18,
+    lineHeight: 24,
     fontWeight: "700",
   },
   closeButton: {
@@ -130,5 +131,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     minHeight: MINIMUM_TOUCH_SIZE,
     minWidth: MINIMUM_TOUCH_SIZE,
+    borderRadius: RADII.pill,
   },
 });

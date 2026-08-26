@@ -1,18 +1,16 @@
 import type {
+  AuthRoleComponent,
   AuthSession,
 } from "@/src/features/auth/domain/auth.types";
-import { createAuthenticatedHeaders } from "@/src/features/auth/data/authenticated-headers";
 import type {
   ModuleIconName,
   ModuleKey,
   ModuleViewModel,
 } from "@/src/features/modules/domain/module.types";
-import { executeJsonRequest } from "@/src/utils/api-client";
-
-const API_BASE_URL = "http://34.100.253.156/fom-api";
-const ROLE_COMPONENT_PAGE_LIMIT = 500;
 
 const MOBILE_MODULE_KEYS: Readonly<Record<string, ModuleKey>> = {
+  incident: "incidents",
+  "work request": "work-assigned",
   "work assigned": "work-assigned",
   "view and report incidents": "incidents",
 };
@@ -22,6 +20,7 @@ const FALLBACK_ICONS: Record<ModuleKey, ModuleIconName> = {
   incidents: "alert-triangle",
 };
 const DEFAULT_MODULE_ICON: ModuleIconName = "grid";
+const HIDDEN_HOME_COMPONENT_NAME = "fom";
 
 const BACKEND_ICON_MAP: Readonly<Record<string, ModuleIconName>> = {
   "alert-triangle": "alert-triangle",
@@ -33,75 +32,27 @@ const BACKEND_ICON_MAP: Readonly<Record<string, ModuleIconName>> = {
   wrench: "tool",
 };
 
-interface RoleComponentDto {
-  id: string;
-  componentName: string;
-  moduleName: string;
-  componentType: string;
-  description: string | null;
-  routeLink: string | null;
-  icon: string | null;
-  orderNo: number;
-  availableActions: string[];
-  assignedActions: string[];
-  hasAccess: boolean;
-  children: RoleComponentDto[];
-}
-
-interface RoleComponentResponseDto {
-  status: string;
-  data: RoleComponentDto[];
-}
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null;
-
-const isStringArray = (value: unknown): value is string[] =>
-  Array.isArray(value) && value.every((item) => typeof item === "string");
-
-const isNullableString = (value: unknown): value is string | null =>
-  typeof value === "string" || value === null;
-
-const isRoleComponentDto = (value: unknown): value is RoleComponentDto =>
-  isRecord(value) &&
-  typeof value.id === "string" &&
-  typeof value.componentName === "string" &&
-  typeof value.moduleName === "string" &&
-  typeof value.componentType === "string" &&
-  isNullableString(value.description) &&
-  isNullableString(value.routeLink) &&
-  isNullableString(value.icon) &&
-  typeof value.orderNo === "number" &&
-  isStringArray(value.availableActions) &&
-  isStringArray(value.assignedActions) &&
-  typeof value.hasAccess === "boolean" &&
-  Array.isArray(value.children) &&
-  value.children.every(isRoleComponentDto);
-
-const isRoleComponentResponseDto = (
-  value: unknown,
-): value is RoleComponentResponseDto =>
-  isRecord(value) &&
-  typeof value.status === "string" &&
-  Array.isArray(value.data) &&
-  value.data.every(isRoleComponentDto);
-
 const flattenComponents = (
-  components: readonly RoleComponentDto[],
-): RoleComponentDto[] =>
+  components: readonly AuthRoleComponent[],
+): AuthRoleComponent[] =>
   components.flatMap((component) => [
     component,
     ...flattenComponents(component.children),
   ]);
 
-const getModuleKey = (component: RoleComponentDto): ModuleKey | null =>
+const isPermittedHomeModule = (component: AuthRoleComponent): boolean =>
+  component.componentName.trim().toLocaleLowerCase() !==
+    HIDDEN_HOME_COMPONENT_NAME &&
+  (component.hasAccess || component.permissions.length > 0);
+
+const getModuleKey = (component: AuthRoleComponent): ModuleKey | null =>
   MOBILE_MODULE_KEYS[component.componentName.trim().toLocaleLowerCase()] ?? null;
 
 const getModuleIcon = (
-  component: RoleComponentDto,
+  component: AuthRoleComponent,
   moduleKey: ModuleKey | null,
 ): ModuleIconName => {
-  const backendIcon = component.icon
+  const backendIcon = (component.mobileIcon ?? component.icon)
     ?.trim()
     .toLocaleLowerCase()
     .replace(/^pi\s+pi-/, "");
@@ -113,7 +64,7 @@ const getModuleIcon = (
 };
 
 const mapComponentToModule = (
-  component: RoleComponentDto,
+  component: AuthRoleComponent,
   moduleKey: ModuleKey | null,
 ): ModuleViewModel => ({
   id: component.id,
@@ -125,31 +76,8 @@ const mapComponentToModule = (
 
 export class ModuleRepository {
   async getPermittedModules(session: AuthSession): Promise<ModuleViewModel[]> {
-    const { response, body } = await executeJsonRequest({
-      url: API_BASE_URL + "/roleComponent/search-roleComponent",
-      method: "POST",
-      headers: {
-        ...createAuthenticatedHeaders(session),
-        "Content-Type": "application/json",
-      },
-      body: {
-        page: 1,
-        limit: ROLE_COMPONENT_PAGE_LIMIT,
-        filters: { roleId: session.user.roleId },
-      },
-    });
-    if (!response.ok) {
-      throw new Error("Module access could not be loaded.");
-    }
-    if (!isRoleComponentResponseDto(body)) {
-      throw new Error("The module access response was incomplete.");
-    }
-
-    return flattenComponents(body.data)
-      .filter(
-        (component) =>
-          component.hasAccess || component.assignedActions.length > 0,
-      )
+    return flattenComponents(session.roleComponents)
+      .filter(isPermittedHomeModule)
       .sort(
         (firstComponent, secondComponent) =>
           firstComponent.orderNo - secondComponent.orderNo,

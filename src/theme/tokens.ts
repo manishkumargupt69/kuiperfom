@@ -8,6 +8,8 @@ export const COLORS = {
   accentPressed: "#125448",
   accentSoft: "#E5F0ED",
   border: "#E1E4E0",
+  overlay: "rgba(27, 29, 27, 0.38)",
+  dangerSoft: "#FEF3F2",
   danger: "#B42318",
   warningBackground: "#FEF0C7",
   warningInk: "#B54708",
@@ -31,6 +33,7 @@ export const RADII = {
   small: 6,
   medium: 10,
   large: 14,
+  sheet: 20,
   pill: 999,
 } as const;
 

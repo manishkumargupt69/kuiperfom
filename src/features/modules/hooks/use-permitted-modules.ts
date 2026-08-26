@@ -19,7 +19,13 @@ export const usePermittedModules = (
   const roleId = session?.user.roleId ?? "";
   const companyId = session?.user.company[0]?.id ?? "";
   const query = useQuery({
-    queryKey: [MODULE_QUERY_KEY, userId, roleId, companyId],
+    queryKey: [
+      MODULE_QUERY_KEY,
+      userId,
+      roleId,
+      companyId,
+      session?.roleComponents,
+    ],
     queryFn: () =>
       session
         ? moduleRepository.getPermittedModules(session)

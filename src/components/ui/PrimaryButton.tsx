@@ -51,13 +51,14 @@ const styles = StyleSheet.create({
   button: {
     alignItems: "center",
     backgroundColor: COLORS.accent,
-    borderRadius: RADII.medium,
+    borderRadius: RADII.large,
     minHeight: CONTROL_HEIGHT,
     justifyContent: "center",
     paddingHorizontal: SPACING.large,
   },
   buttonPressed: {
     backgroundColor: COLORS.accentPressed,
+    opacity: 0.92,
   },
   buttonDisabled: {
     opacity: 0.55,
@@ -65,6 +66,7 @@ const styles = StyleSheet.create({
   label: {
     color: COLORS.white,
     ...TYPOGRAPHY.control,
-    fontWeight: "600",
+    fontSize: 17,
+    fontWeight: "700",
   },
 });

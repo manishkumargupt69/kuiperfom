@@ -53,6 +53,7 @@ function FormField({
           accessibilityLabel={label}
           autoCapitalize={textCapitalization}
           autoCorrect={false}
+          inputMode={keyboardType === "number-pad" ? "numeric" : undefined}
           keyboardType={keyboardType}
           maxLength={maxLength}
           multiline={isMultiline}
@@ -60,6 +61,7 @@ function FormField({
           placeholder={placeholder}
           placeholderTextColor={COLORS.inkMuted}
           secureTextEntry={isSecure && !isSecureTextVisible}
+          showSoftInputOnFocus
           style={[styles.input, isMultiline ? styles.multiline : undefined]}
           value={value}
         />

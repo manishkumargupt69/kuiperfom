@@ -52,7 +52,6 @@ export default function ChangePasswordModal({
       title="Change password"
     >
       <ScrollView
-        automaticallyAdjustKeyboardInsets
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}

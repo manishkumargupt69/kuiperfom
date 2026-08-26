@@ -13,6 +13,7 @@ import {
   SPACING,
   TYPOGRAPHY,
 } from "@/src/theme/tokens";
+import { formatDateTime } from "@/src/utils/format-date-time";
 
 const AVATAR_SIZE = 44;
 const AVATAR_ICON_SIZE = 22;
@@ -69,15 +70,17 @@ function UserProfileView({
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Account details</Text>
         <ProfileDetailRow
+          iconName="briefcase"
           label="Employee code"
           value={user.employeeCode ?? "—"}
         />
-        <ProfileDetailRow label="Login ID" value={user.userId} />
-        <ProfileDetailRow label="Mobile" value={user.mobile} />
-        <ProfileDetailRow label="Last login" value={user.lastLogin} />
-        <ProfileDetailRow label="Branch ID" value={user.branchId ?? "—"} />
-        <ProfileDetailRow label="Company" value={companySummary} />
+        <ProfileDetailRow iconName="at-sign" label="Login ID" value={user.userId} />
+        <ProfileDetailRow iconName="phone" label="Mobile" value={user.mobile} />
+        <ProfileDetailRow iconName="clock" label="Last login" value={formatDateTime(user.lastLogin)} />
+        <ProfileDetailRow iconName="map-pin" label="Branch ID" value={user.branchId ?? "—"} />
+        <ProfileDetailRow iconName="home" label="Company" value={companySummary} />
         <ProfileDetailRow
+          iconName="shield"
           label="MPIN"
           value={user.hasMpin ? "Configured" : "Not configured"}
         />
@@ -85,10 +88,11 @@ function UserProfileView({
 
       <View style={styles.actions}>
         <Pressable
+          accessibilityLabel={isSecurityExpanded ? "Collapse security options" : "Expand security options"}
           accessibilityRole="button"
           accessibilityState={{ expanded: isSecurityExpanded }}
           onPress={handleSecurityToggle}
-          style={styles.securityHeader}
+          style={({ pressed }) => [styles.securityHeader, pressed && styles.rowPressed]}
         >
           <Feather color={COLORS.inkMuted} name="shield" size={ACTION_ICON_SIZE} />
           <Text style={styles.securityHeaderLabel}>Security</Text>
@@ -103,7 +107,7 @@ function UserProfileView({
             <Pressable
               accessibilityRole="button"
               onPress={onMpinPress}
-              style={styles.securityItem}
+              style={({ pressed }) => [styles.securityItem, pressed && styles.rowPressed]}
             >
               <Feather color={COLORS.accent} name="hash" size={ACTION_ICON_SIZE} />
               <Text style={styles.securityItemLabel}>
@@ -114,7 +118,7 @@ function UserProfileView({
             <Pressable
               accessibilityRole="button"
               onPress={onChangePasswordPress}
-              style={styles.securityItem}
+              style={({ pressed }) => [styles.securityItem, pressed && styles.rowPressed]}
             >
               <Feather color={COLORS.accent} name="key" size={ACTION_ICON_SIZE} />
               <Text style={styles.securityItemLabel}>Change password</Text>
@@ -127,7 +131,7 @@ function UserProfileView({
       <Pressable
         accessibilityRole="button"
         onPress={onSignOutPress}
-        style={styles.signOutButton}
+        style={({ pressed }) => [styles.signOutButton, pressed && styles.signOutPressed]}
       >
         <Feather color={COLORS.danger} name="log-out" size={ACTION_ICON_SIZE} />
         <Text style={styles.signOutLabel}>Sign out</Text>
@@ -147,7 +151,11 @@ const styles = StyleSheet.create({
   identity: {
     alignItems: "center",
     flexDirection: "row",
-    paddingBottom: SPACING.large,
+    backgroundColor: COLORS.surface,
+    borderColor: COLORS.border,
+    borderRadius: RADII.large,
+    borderWidth: 1,
+    padding: SPACING.medium,
   },
   avatar: {
     alignItems: "center",
@@ -172,18 +180,28 @@ const styles = StyleSheet.create({
     marginTop: SPACING.extraSmall,
   },
   section: {
-    borderTopColor: COLORS.border,
-    borderTopWidth: 1,
+    backgroundColor: COLORS.surface,
+    borderColor: COLORS.border,
+    borderRadius: RADII.large,
+    borderWidth: 1,
+    marginTop: SPACING.medium,
+    overflow: "hidden",
+    paddingHorizontal: SPACING.medium,
     paddingTop: SPACING.medium,
   },
   sectionTitle: {
     color: COLORS.ink,
     ...TYPOGRAPHY.control,
     fontWeight: "700",
-    marginBottom: SPACING.small,
+    marginBottom: SPACING.extraSmall,
   },
   actions: {
-    marginTop: SPACING.small,
+    backgroundColor: COLORS.surface,
+    borderColor: COLORS.border,
+    borderRadius: RADII.large,
+    borderWidth: 1,
+    marginTop: SPACING.medium,
+    overflow: "hidden",
   },
   securityHeader: {
     alignItems: "center",
@@ -191,6 +209,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     flexDirection: "row",
     minHeight: MINIMUM_TOUCH_SIZE,
+    paddingHorizontal: SPACING.medium,
   },
   securityHeaderLabel: {
     color: COLORS.ink,
@@ -200,7 +219,8 @@ const styles = StyleSheet.create({
     marginLeft: SPACING.medium,
   },
   securityItems: {
-    paddingLeft: SPACING.section,
+    backgroundColor: COLORS.surfaceMuted,
+    paddingLeft: SPACING.extraLarge,
   },
   securityItem: {
     alignItems: "center",
@@ -208,6 +228,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     flexDirection: "row",
     minHeight: MINIMUM_TOUCH_SIZE,
+    paddingHorizontal: SPACING.medium,
   },
   securityItemLabel: {
     color: COLORS.ink,
@@ -220,7 +241,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "center",
-    marginTop: SPACING.small,
+    backgroundColor: COLORS.dangerSoft,
+    borderRadius: RADII.large,
+    marginTop: SPACING.medium,
     minHeight: MINIMUM_TOUCH_SIZE,
   },
   signOutLabel: {
@@ -229,4 +252,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginLeft: SPACING.small,
   },
+  rowPressed: { backgroundColor: COLORS.surfaceMuted },
+  signOutPressed: { opacity: 0.72 },
 });
