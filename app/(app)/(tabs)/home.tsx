@@ -22,6 +22,10 @@ const MODULE_ACTIONS: Record<ModuleKey, () => void> = {
 };
 
 const openModule = (module: ModuleViewModel): void => {
+  if (module.children && module.children.length > 0) {
+    router.push(`/(app)/module/${module.id}` as any);
+    return;
+  }
   if (module.key) {
     MODULE_ACTIONS[module.key]();
     return;
@@ -49,13 +53,10 @@ const renderModulesHeader = (): ReactElement => <Text style={styles.title}>Modul
 export default function HomeScreen(): ReactElement {
   const session = useAuthStore((state) => state.session);
   const { viewState, reload } = usePermittedModules(session);
-  const openProfile = useCallback((): void => router.push("/(app)/profile"), []);
   const handleRetry = useCallback((): void => { void reload(); }, [reload]);
-  const accountAction = { accessibilityLabel: "Open profile", icon: "user" as const, onPress: openProfile };
-
   return (
     <ScreenContainer>
-      <AppHeader action={accountAction} title="FOM" />
+      <AppHeader title="FOM" showMenu={true} />
       {viewState.status === "success" ? <FlatList columnWrapperStyle={styles.moduleRow} contentContainerStyle={styles.list} data={viewState.data} keyExtractor={getModuleKey} ListHeaderComponent={renderModulesHeader} numColumns={MODULE_GRID_COLUMNS} renderItem={renderModule} showsVerticalScrollIndicator={false} /> : <View style={styles.state}>{renderModulesHeader()}<AsyncStateView emptyMessage="No mobile modules are assigned to your role." message={viewState.status === "error" ? viewState.message : undefined} onRetry={handleRetry} status={viewState.status} variant="list" /></View>}
     </ScreenContainer>
   );
