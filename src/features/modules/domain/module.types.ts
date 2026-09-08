@@ -13,4 +13,5 @@ export interface ModuleViewModel {
   title: string;
   description: string;
   iconName: ModuleIconName;
+  children?: ModuleViewModel[];
 }

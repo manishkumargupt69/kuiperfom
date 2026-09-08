@@ -38,28 +38,37 @@ export default function SignInScreen(): ReactElement {
           keyboardShouldPersistTaps="handled"
           style={styles.scroll}
         >
-          <View style={styles.brand}>
-            <View style={styles.brandMark}>
-              <Text accessibilityRole="header" style={styles.brandMarkText}>FOM</Text>
+          <View style={styles.header}>
+            <View style={styles.brandMarkContainer}>
+              <View style={styles.brandMark}>
+                <Text accessibilityRole="header" style={styles.brandMarkText}>FOM</Text>
+              </View>
             </View>
             <Text style={styles.brandSubtitle}>Field Operations Management</Text>
+            <Text style={styles.title}>Welcome back</Text>
           </View>
-          <Text style={styles.title}>Sign in</Text>
+          
           <View style={styles.panel}>
             <AuthModeSelector
               isMpinAvailable={signIn.isMpinAvailable}
               onSelectMode={handleModeSelect}
               selectedMode={signIn.mode}
             />
-            <SignInForm
-              errors={signIn.errors}
-              fields={signIn.fields}
-              isSubmitting={signIn.isSubmitting}
-              mode={signIn.mode}
-              onChangeField={signIn.updateField}
-              onSubmit={signIn.submit}
-            />
-            {signIn.mode !== "mpin" ? <RememberMeControl isSelected={signIn.isRemembered} onToggle={signIn.toggleRemembered} /> : null}
+            <View style={styles.formContainer}>
+              <SignInForm
+                errors={signIn.errors}
+                fields={signIn.fields}
+                isSubmitting={signIn.isSubmitting}
+                mode={signIn.mode}
+                onChangeField={signIn.updateField}
+                onSubmit={signIn.submit}
+              />
+              {signIn.mode !== "mpin" ? (
+                <View style={styles.rememberMeContainer}>
+                  <RememberMeControl isSelected={signIn.isRemembered} onToggle={signIn.toggleRemembered} />
+                </View>
+              ) : null}
+            </View>
             {signIn.notice ? <Text accessibilityLiveRegion="polite" style={styles.notice}>{signIn.notice}</Text> : null}
           </View>
         </ScrollView>
@@ -69,14 +78,50 @@ export default function SignInScreen(): ReactElement {
 }
 
 const styles = StyleSheet.create({
-  keyboardArea: { flex: 1 },
+  keyboardArea: { flex: 1, backgroundColor: COLORS.background },
   scroll: { flex: 1 },
   content: { flexGrow: 1, justifyContent: "center", paddingHorizontal: SCREEN_HORIZONTAL_PADDING, paddingVertical: SPACING.extraLarge },
-  brand: { alignItems: "center", marginBottom: SPACING.section },
-  brandMark: { alignItems: "center", backgroundColor: COLORS.accent, borderRadius: RADII.large, height: 64, justifyContent: "center", marginBottom: SPACING.medium, width: 64 },
-  brandMarkText: { color: COLORS.white, fontSize: 19, fontWeight: "800", letterSpacing: 1 },
-  brandSubtitle: { color: COLORS.inkMuted, ...TYPOGRAPHY.caption, letterSpacing: 0.2 },
-  title: { color: COLORS.ink, ...TYPOGRAPHY.screenTitle, fontWeight: "700" },
-  panel: { gap: SPACING.large, marginTop: SPACING.extraLarge },
-  notice: { color: COLORS.inkMuted, ...TYPOGRAPHY.caption },
+  header: { alignItems: "center", marginBottom: SPACING.extraLarge },
+  brandMarkContainer: {
+    padding: SPACING.small,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADII.sheet,
+    shadowColor: COLORS.ink,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.05,
+    shadowRadius: 24,
+    elevation: 4,
+    marginBottom: SPACING.large,
+  },
+  brandMark: { 
+    alignItems: "center", 
+    backgroundColor: COLORS.accent, 
+    borderRadius: RADII.large, 
+    height: 80, 
+    justifyContent: "center", 
+    width: 80 
+  },
+  brandMarkText: { color: COLORS.white, fontSize: 24, fontWeight: "900", letterSpacing: 2 },
+  brandSubtitle: { color: COLORS.inkMuted, ...TYPOGRAPHY.caption, letterSpacing: 1.5, textTransform: "uppercase", fontWeight: "600", marginBottom: SPACING.medium },
+  title: { color: COLORS.ink, ...TYPOGRAPHY.screenTitle, fontWeight: "800", letterSpacing: -0.5 },
+  panel: { gap: SPACING.large },
+  formContainer: {
+    backgroundColor: COLORS.surface,
+    padding: SPACING.large,
+    borderRadius: RADII.sheet,
+    shadowColor: COLORS.ink,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 12,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  rememberMeContainer: {
+    marginTop: SPACING.medium,
+    paddingTop: SPACING.medium,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.border,
+  },
+  notice: { color: COLORS.inkMuted, ...TYPOGRAPHY.caption, textAlign: "center" },
 });

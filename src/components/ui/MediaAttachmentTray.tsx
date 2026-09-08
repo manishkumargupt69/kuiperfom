@@ -16,8 +16,8 @@ interface MediaAttachmentTrayProps {
   onAddDocument: () => void;
   onAddFromGallery: () => void;
   onAddPhoto: () => void;
-  onAddVideo: () => void;
-  onRecordVoice: () => void;
+  onAddVideo?: () => void;
+  onRecordVoice?: () => void;
   onRemove: (id: string) => void;
 }
 
@@ -31,16 +31,17 @@ export default function MediaAttachmentTray({ title = "Evidence", attachments, i
   const handleAddDocument = useCallback((): void => runAfterKeyboardDismissed(onAddDocument), [onAddDocument]);
   const handleOpenCamera = useCallback((): void => {
     runAfterKeyboardDismissed((): void => {
-      Alert.alert("Capture evidence", "Choose what to capture.", [
-        { text: "Take photo", onPress: onAddPhoto },
-        { text: "Record video", onPress: onAddVideo },
-        { text: "Cancel", style: "cancel" },
-      ]);
+      const options: import("react-native").AlertButton[] = [{ text: "Take photo", onPress: onAddPhoto }];
+      if (onAddVideo) {
+        options.push({ text: "Record video", onPress: onAddVideo });
+      }
+      options.push({ text: "Cancel", style: "cancel" });
+      Alert.alert("Capture evidence", "Choose what to capture.", options);
     });
   }, [onAddPhoto, onAddVideo]);
   const handleAddFromGallery = useCallback((): void => runAfterKeyboardDismissed(onAddFromGallery), [onAddFromGallery]);
-  const handleRecordVoice = useCallback((): void => runAfterKeyboardDismissed(onRecordVoice), [onRecordVoice]);
-  return <View style={styles.container}><View><Text style={styles.title}>{title}</Text><Text style={styles.supportingText}>Capture or attach photos, video, documents, and voice notes.</Text></View><EvidenceAttachmentList attachments={attachments} onRemove={onRemove} /><View style={styles.actions}><SecondaryButton iconName="camera" isDisabled={isRecording} label="Camera" onPress={handleOpenCamera} style={styles.action} /><SecondaryButton iconName="image" isDisabled={isRecording} label="Gallery" onPress={handleAddFromGallery} style={styles.action} /><SecondaryButton iconName="file-text" isDisabled={isRecording} label="File" onPress={handleAddDocument} style={styles.action} /><SecondaryButton iconName="mic" isSelected={isRecording} label={voiceLabel} onPress={handleRecordVoice} style={styles.action} /></View></View>;
+  const handleRecordVoice = useCallback((): void => { if (onRecordVoice) runAfterKeyboardDismissed(onRecordVoice); }, [onRecordVoice]);
+  return <View style={styles.container}><View><Text style={styles.title}>{title}</Text><Text style={styles.supportingText}>Capture or attach photos, {onAddVideo ? "video, " : ""}documents{onRecordVoice ? ", and voice notes" : ""}.</Text></View><EvidenceAttachmentList attachments={attachments} onRemove={onRemove} /><View style={styles.actions}><SecondaryButton iconName="camera" isDisabled={isRecording} label="Camera" onPress={handleOpenCamera} style={styles.action} /><SecondaryButton iconName="image" isDisabled={isRecording} label="Gallery" onPress={handleAddFromGallery} style={styles.action} /><SecondaryButton iconName="file-text" isDisabled={isRecording} label="File" onPress={handleAddDocument} style={styles.action} />{onRecordVoice ? <SecondaryButton iconName="mic" isSelected={isRecording} label={voiceLabel} onPress={handleRecordVoice} style={styles.action} /> : null}</View></View>;
 }
 
 const styles = StyleSheet.create({ container: { gap: SPACING.medium }, title: { color: COLORS.ink, ...TYPOGRAPHY.control, fontWeight: "700" }, supportingText: { color: COLORS.inkMuted, ...TYPOGRAPHY.caption, marginTop: SPACING.extraSmall }, actions: { flexDirection: "row", flexWrap: "wrap", gap: SPACING.small }, action: { flexBasis: "48%", flexGrow: 1, paddingHorizontal: SPACING.medium } });

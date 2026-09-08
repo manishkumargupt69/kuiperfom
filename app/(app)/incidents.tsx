@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { useCallback, useState } from "react";
-import { FlatList, StyleSheet, View } from "react-native";
+import { ActivityIndicator, FlatList, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
 
 import AppHeader from "@/src/components/ui/AppHeader";
@@ -17,7 +17,7 @@ import { COLORS, SCREEN_HORIZONTAL_PADDING, SPACING } from "@/src/theme/tokens";
 export default function IncidentsScreen(): ReactElement {
   const [searchText, setSearchText] = useState("");
   const session = useAuthStore((state) => state.session);
-  const { viewState, reload } = useReportedIncidents(session, searchText);
+  const { viewState, reload, loadMore, isFetchingNextPage } = useReportedIncidents(session, searchText);
   const handleBack = useCallback((): void => router.back(), []);
   const clearSearch = useCallback((): void => setSearchText(""), []);
   const reportIncident = useCallback((): void => router.push("/(app)/incidents/new"), []);
@@ -26,12 +26,36 @@ export default function IncidentsScreen(): ReactElement {
   const keyExtractor = useCallback((item: IncidentViewModel): string => item.id, []);
   const handleRetry = useCallback((): void => { void reload(); }, [reload]);
 
+  const renderFooter = useCallback(
+    () =>
+      isFetchingNextPage ? (
+        <View style={styles.footerLoader}>
+          <ActivityIndicator size="small" />
+        </View>
+      ) : null,
+    [isFetchingNextPage]
+  );
+
   return (
     <ScreenContainer>
       <AppHeader onBack={handleBack} title="Incidents" />
       <View style={styles.tools}><SearchField accessibilityLabel="Search incidents" onChangeText={setSearchText} onClear={clearSearch} placeholder="Search incidents" value={searchText} /></View>
       <View style={styles.body}>
-        {viewState.status === "success" ? <FlatList contentContainerStyle={styles.list} data={viewState.data} keyExtractor={keyExtractor} keyboardShouldPersistTaps="handled" renderItem={renderItem} showsVerticalScrollIndicator={false} /> : <AsyncStateView emptyMessage="No reported incidents found." message={viewState.status === "error" ? viewState.message : undefined} onRetry={handleRetry} status={viewState.status} variant="list" />}
+        {viewState.status === "success" ? (
+          <FlatList 
+            contentContainerStyle={styles.list} 
+            data={viewState.data} 
+            keyExtractor={keyExtractor} 
+            keyboardShouldPersistTaps="handled" 
+            renderItem={renderItem} 
+            showsVerticalScrollIndicator={false} 
+            onEndReached={loadMore}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={renderFooter}
+          />
+        ) : (
+          <AsyncStateView emptyMessage="No reported incidents found." message={viewState.status === "error" ? viewState.message : undefined} onRetry={handleRetry} status={viewState.status} variant="list" />
+        )}
       </View>
       <View style={styles.footer}><PrimaryButton label="Report Incident" onPress={reportIncident} /></View>
     </ScreenContainer>
@@ -43,4 +67,5 @@ const styles = StyleSheet.create({
   body: { flex: 1, paddingHorizontal: SCREEN_HORIZONTAL_PADDING },
   list: { paddingBottom: SPACING.section, paddingTop: SPACING.extraSmall },
   footer: { backgroundColor: COLORS.surface, borderTopColor: COLORS.border, borderTopWidth: StyleSheet.hairlineWidth, padding: SCREEN_HORIZONTAL_PADDING },
+  footerLoader: { paddingVertical: SPACING.medium, alignItems: "center", justifyContent: "center" },
 });

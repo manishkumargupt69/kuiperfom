@@ -275,12 +275,13 @@ const getMutationErrorMessage = ({
 export class IncidentRepository {
   async getReportedIncidents(
     session: AuthSession,
+    page: number = 1,
   ): Promise<readonly IncidentViewModel[]> {
     const [incidentDtos, types, subtypes, assignees] = await Promise.all([
       searchRecords({
         session,
         path: "incident/search-incident",
-        body: { page: 1, limit: 50 },
+        body: { page, limit: 25 },
         isItem: isIncidentListItemDto,
         errorMessage: "Incidents could not be loaded.",
       }),

@@ -60,8 +60,13 @@ const getEvidenceErrorMessage = ({
   fallbackMessage: string;
 }): string => (error instanceof Error ? error.message : fallbackMessage);
 
+export interface EvidenceAttachmentOptions {
+  allowVideo?: boolean;
+}
+
 export const useEvidenceAttachments = (
   initialAttachments: readonly EvidenceAttachment[] = EMPTY_ATTACHMENTS,
+  options: EvidenceAttachmentOptions = { allowVideo: true },
 ): EvidenceAttachmentsResult => {
   const [attachments, setAttachments] = useState<readonly EvidenceAttachment[]>(
     initialAttachments,
@@ -146,7 +151,7 @@ export const useEvidenceAttachments = (
 
       const result = await ImagePicker.launchImageLibraryAsync({
         allowsEditing: false,
-        mediaTypes: ["images", "videos"],
+        mediaTypes: options.allowVideo ? ["images", "videos"] : ["images"],
         quality: 1,
       });
       if (result.canceled) return;

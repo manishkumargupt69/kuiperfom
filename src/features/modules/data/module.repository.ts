@@ -10,6 +10,7 @@ import type {
 
 const MOBILE_MODULE_KEYS: Readonly<Record<string, ModuleKey>> = {
   incident: "incidents",
+  "incident / sub incident type": "incidents",
   "work request": "work-assigned",
   "work assigned": "work-assigned",
   "view and report incidents": "incidents",
@@ -20,7 +21,6 @@ const FALLBACK_ICONS: Record<ModuleKey, ModuleIconName> = {
   incidents: "alert-triangle",
 };
 const DEFAULT_MODULE_ICON: ModuleIconName = "grid";
-const HIDDEN_HOME_COMPONENT_NAME = "fom";
 
 const BACKEND_ICON_MAP: Readonly<Record<string, ModuleIconName>> = {
   "alert-triangle": "alert-triangle",
@@ -32,18 +32,11 @@ const BACKEND_ICON_MAP: Readonly<Record<string, ModuleIconName>> = {
   wrench: "tool",
 };
 
-const flattenComponents = (
-  components: readonly AuthRoleComponent[],
-): AuthRoleComponent[] =>
-  components.flatMap((component) => [
-    component,
-    ...flattenComponents(component.children),
-  ]);
-
-const isPermittedHomeModule = (component: AuthRoleComponent): boolean =>
-  component.componentName.trim().toLocaleLowerCase() !==
-    HIDDEN_HOME_COMPONENT_NAME &&
-  (component.hasAccess || component.permissions.length > 0);
+const isPermittedHomeModule = (component: AuthRoleComponent): boolean => {
+  const hasDirectAccess = component.hasAccess || component.permissions.length > 0;
+  const hasChildAccess = component.children.some(child => isPermittedHomeModule(child));
+  return hasDirectAccess || hasChildAccess;
+};
 
 const getModuleKey = (component: AuthRoleComponent): ModuleKey | null =>
   MOBILE_MODULE_KEYS[component.componentName.trim().toLocaleLowerCase()] ?? null;
@@ -72,11 +65,15 @@ const mapComponentToModule = (
   title: component.componentName,
   description: component.description?.trim() || component.moduleName,
   iconName: getModuleIcon(component, moduleKey),
+  children: component.children
+    .filter(isPermittedHomeModule)
+    .sort((a, b) => a.orderNo - b.orderNo)
+    .map(child => mapComponentToModule(child, getModuleKey(child))),
 });
 
 export class ModuleRepository {
   async getPermittedModules(session: AuthSession): Promise<ModuleViewModel[]> {
-    return flattenComponents(session.roleComponents)
+    return session.roleComponents
       .filter(isPermittedHomeModule)
       .sort(
         (firstComponent, secondComponent) =>
@@ -89,3 +86,4 @@ export class ModuleRepository {
 }
 
 export const moduleRepository = new ModuleRepository();
+

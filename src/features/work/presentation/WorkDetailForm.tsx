@@ -35,8 +35,8 @@ interface WorkDetailFormProps {
   onAddDocument: () => void;
   onAddFromGallery: () => void;
   onAddPhoto: () => void;
-  onAddVideo: () => void;
-  onRecordVoice: () => void;
+  onAddVideo?: () => void;
+  onRecordVoice?: () => void;
   onRemoveAttachment: (id: string) => void;
 }
 

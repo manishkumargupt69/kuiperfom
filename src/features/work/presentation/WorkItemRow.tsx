@@ -83,7 +83,9 @@ function WorkItemRow({ item, onPress }: WorkItemRowProps): ReactElement {
 
       <View style={styles.information}>
         <WorkInfoRow iconName="hash" value={item.workItemCode} />
-        <WorkInfoRow iconName="user" value={item.assignedToName} />
+        {item.assignedToName ? (
+          <WorkInfoRow iconName="user" value={item.assignedToName} />
+        ) : null}
         <WorkInfoRow
           iconName="calendar"
           value={formatDateTime(item.targetCompletion)}
@@ -203,3 +205,4 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 });
+

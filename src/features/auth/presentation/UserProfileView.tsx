@@ -1,12 +1,19 @@
 import type { ReactElement } from "react";
 import { memo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import type {
+  PressableStateCallbackType,
+  StyleProp,
+  ViewStyle,
+} from "react-native";
 import Feather from "@expo/vector-icons/Feather";
 
 import type { AuthenticatedUser } from "@/src/features/auth/domain/auth.types";
 import ProfileDetailRow from "@/src/features/auth/presentation/ProfileDetailRow";
 import {
   COLORS,
+  CONTROL_HEIGHT,
+  FLOATING_TAB_BAR_CONTENT_CLEARANCE,
   MINIMUM_TOUCH_SIZE,
   RADII,
   SCREEN_HORIZONTAL_PADDING,
@@ -18,6 +25,14 @@ import { formatDateTime } from "@/src/utils/format-date-time";
 const AVATAR_SIZE = 44;
 const AVATAR_ICON_SIZE = 22;
 const ACTION_ICON_SIZE = 18;
+const TOP_CARD_SIGN_OUT_SIZE = MINIMUM_TOUCH_SIZE;
+
+const getTopCardSignOutStyle = ({
+  pressed,
+}: PressableStateCallbackType): StyleProp<ViewStyle> => [
+  styles.topCardSignOut,
+  pressed && styles.topCardSignOutPressed,
+];
 
 const getCompanySummary = (user: AuthenticatedUser): string =>
   user.company.map((company) => company.name).join(", ");
@@ -42,10 +57,25 @@ function UserProfileView({
   };
 
   return (
-    <View style={styles.content}>
+    <ScrollView
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.identity}>
-        <View accessibilityElementsHidden style={styles.avatar}>
-          <Feather color={COLORS.accent} name="user" size={AVATAR_ICON_SIZE} />
+        <Pressable
+          accessibilityHint="Signs out of the current account"
+          accessibilityLabel="Sign out"
+          accessibilityRole="button"
+          onPress={onSignOutPress}
+          style={getTopCardSignOutStyle}
+        >
+          <Feather color={COLORS.danger} name="log-out" size={ACTION_ICON_SIZE} />
+          <Text style={styles.topCardSignOutLabel}>Sign out</Text>
+        </Pressable>
+        <View style={styles.avatarContainer}>
+          <View accessibilityElementsHidden style={styles.avatar}>
+            <Feather color={COLORS.accent} name="user" size={32} />
+          </View>
         </View>
         <View style={styles.identityText}>
           <Text
@@ -128,15 +158,7 @@ function UserProfileView({
         ) : null}
       </View>
 
-      <Pressable
-        accessibilityRole="button"
-        onPress={onSignOutPress}
-        style={({ pressed }) => [styles.signOutButton, pressed && styles.signOutPressed]}
-      >
-        <Feather color={COLORS.danger} name="log-out" size={ACTION_ICON_SIZE} />
-        <Text style={styles.signOutLabel}>Sign out</Text>
-      </Pressable>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -144,64 +166,88 @@ export default memo(UserProfileView);
 
 const styles = StyleSheet.create({
   content: {
-    flex: 1,
+    flexGrow: 1,
+    paddingBottom: FLOATING_TAB_BAR_CONTENT_CLEARANCE + SPACING.large,
     paddingHorizontal: SCREEN_HORIZONTAL_PADDING,
-    paddingVertical: SPACING.large,
+    paddingTop: SPACING.large,
   },
   identity: {
     alignItems: "center",
-    flexDirection: "row",
     backgroundColor: COLORS.surface,
     borderColor: COLORS.border,
-    borderRadius: RADII.large,
+    borderRadius: RADII.sheet,
     borderWidth: 1,
-    padding: SPACING.medium,
+    padding: SPACING.extraLarge,
+    marginBottom: SPACING.small,
+    shadowColor: COLORS.ink,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  avatarContainer: {
+    padding: SPACING.small,
+    backgroundColor: COLORS.background,
+    borderRadius: RADII.pill,
+    marginBottom: SPACING.medium,
   },
   avatar: {
     alignItems: "center",
     backgroundColor: COLORS.accentSoft,
     borderRadius: RADII.pill,
-    height: AVATAR_SIZE,
+    height: 80,
     justifyContent: "center",
-    width: AVATAR_SIZE,
+    width: 80,
   },
   identityText: {
-    flex: 1,
-    marginLeft: SPACING.large,
+    alignItems: "center",
   },
   name: {
     color: COLORS.ink,
-    ...TYPOGRAPHY.control,
-    fontWeight: "700",
+    fontSize: 22,
+    fontWeight: "800",
+    letterSpacing: -0.3,
   },
   email: {
     color: COLORS.inkMuted,
-    ...TYPOGRAPHY.caption,
-    marginTop: SPACING.extraSmall,
+    ...TYPOGRAPHY.body,
+    marginTop: 4,
+    fontWeight: "500",
   },
   section: {
     backgroundColor: COLORS.surface,
     borderColor: COLORS.border,
-    borderRadius: RADII.large,
+    borderRadius: RADII.sheet,
     borderWidth: 1,
     marginTop: SPACING.medium,
     overflow: "hidden",
     paddingHorizontal: SPACING.medium,
     paddingTop: SPACING.medium,
+    shadowColor: COLORS.ink,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
+    elevation: 1,
   },
   sectionTitle: {
     color: COLORS.ink,
     ...TYPOGRAPHY.control,
-    fontWeight: "700",
+    fontWeight: "800",
     marginBottom: SPACING.extraSmall,
+    letterSpacing: -0.2,
   },
   actions: {
     backgroundColor: COLORS.surface,
     borderColor: COLORS.border,
-    borderRadius: RADII.large,
+    borderRadius: RADII.sheet,
     borderWidth: 1,
     marginTop: SPACING.medium,
     overflow: "hidden",
+    shadowColor: COLORS.ink,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
+    elevation: 1,
   },
   securityHeader: {
     alignItems: "center",
@@ -237,21 +283,30 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginHorizontal: SPACING.medium,
   },
-  signOutButton: {
+  topCardSignOut: {
     alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "center",
     backgroundColor: COLORS.dangerSoft,
-    borderRadius: RADII.large,
-    marginTop: SPACING.medium,
-    minHeight: MINIMUM_TOUCH_SIZE,
+    borderRadius: RADII.pill,
+    flexDirection: "row",
+    gap: SPACING.extraSmall,
+    justifyContent: "center",
+    minHeight: TOP_CARD_SIGN_OUT_SIZE,
+    paddingHorizontal: SPACING.medium,
+    position: "absolute",
+    right: SPACING.small,
+    top: SPACING.small,
   },
-  signOutLabel: {
+  topCardSignOutLabel: {
     color: COLORS.danger,
-    ...TYPOGRAPHY.control,
-    fontWeight: "600",
-    marginLeft: SPACING.small,
+    ...TYPOGRAPHY.caption,
+    fontWeight: "700",
+  },
+  topCardSignOutPressed: {
+    backgroundColor: COLORS.surface,
+    opacity: 0.72,
   },
   rowPressed: { backgroundColor: COLORS.surfaceMuted },
-  signOutPressed: { opacity: 0.72 },
 });
+
+
+

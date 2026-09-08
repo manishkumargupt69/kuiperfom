@@ -20,7 +20,7 @@ const reducer = (state: EditorState, action: EditorAction): EditorState => {
   return { ...state, transition: action.value };
 };
 
-interface WorkEditorResult { viewState: ViewState<WorkItemViewModel>; editorState: EditorState; isSaving: boolean; attachments: readonly EvidenceAttachment[]; isRecording: boolean; recordingDurationMilliseconds: number; setCompletionPercentage: (value: string) => void; setRemarks: (value: string) => void; selectTransition: (value: WorkTransitionKey) => void; addDocument: () => Promise<void>; addFromGallery: () => Promise<void>; addPhoto: () => Promise<void>; addVideo: () => Promise<void>; toggleVoiceRecording: () => Promise<void>; removeAttachment: (id: string) => void; save: () => Promise<void>; reload: () => Promise<void>; }
+interface WorkEditorResult { viewState: ViewState<WorkItemViewModel>; editorState: EditorState; isSaving: boolean; attachments: readonly EvidenceAttachment[]; isRecording: boolean; recordingDurationMilliseconds: number; setCompletionPercentage: (value: string) => void; setRemarks: (value: string) => void; selectTransition: (value: WorkTransitionKey) => void; addDocument: () => Promise<void>; addFromGallery: () => Promise<void>; addPhoto: () => Promise<void>; addVideo?: () => Promise<void>; toggleVoiceRecording?: () => Promise<void>; removeAttachment: (id: string) => void; save: () => Promise<void>; reload: () => Promise<void>; }
 
 const validateCompletionPercentage = (value: string): void => {
   if (!value.trim()) return;
@@ -40,7 +40,7 @@ export const useWorkEditor = (id: string): WorkEditorResult => {
         : Promise.resolve(null),
     enabled: Boolean(id && session),
   });
-  const evidence = useEvidenceAttachments(EMPTY_ATTACHMENTS);
+  const evidence = useEvidenceAttachments(EMPTY_ATTACHMENTS, { allowVideo: false });
   const { isPending: isSaving, mutateAsync } = useMutation({ mutationFn: (input: WorkUpdateInput) => {
     if (!session) throw new Error("Your session has expired. Sign in again.");
     return workRepository.updateWorkItem(session, input);
@@ -57,5 +57,5 @@ export const useWorkEditor = (id: string): WorkEditorResult => {
   else if (isError) viewState = { status: "error", message: "Work details could not be loaded." };
   else if (!data) viewState = { status: "empty" };
   else viewState = { status: "success", data };
-  return { viewState, editorState, isSaving, attachments: evidence.attachments, isRecording: evidence.isRecording, recordingDurationMilliseconds: evidence.recordingDurationMilliseconds, setCompletionPercentage, setRemarks, selectTransition, addDocument: evidence.addDocument, addFromGallery: evidence.addFromGallery, addPhoto: evidence.addPhoto, addVideo: evidence.addVideo, toggleVoiceRecording: evidence.toggleVoiceRecording, removeAttachment: evidence.removeAttachment, save, reload };
+  return { viewState, editorState, isSaving, attachments: evidence.attachments, isRecording: evidence.isRecording, recordingDurationMilliseconds: evidence.recordingDurationMilliseconds, setCompletionPercentage, setRemarks, selectTransition, addDocument: evidence.addDocument, addFromGallery: evidence.addFromGallery, addPhoto: evidence.addPhoto, addVideo: undefined, toggleVoiceRecording: undefined, removeAttachment: evidence.removeAttachment, save, reload };
 };

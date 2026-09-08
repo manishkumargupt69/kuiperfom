@@ -21,7 +21,20 @@ const API_BASE_URL = `${API_ORIGIN}/fom-api`;
 const PHOTO_EXTENSIONS = new Set(["heic", "jpeg", "jpg", "png", "webp"]);
 const VIDEO_EXTENSIONS = new Set(["avi", "mov", "mp4", "webm"]);
 const AUDIO_EXTENSIONS = new Set(["aac", "m4a", "mp3", "wav"]);
-const WORK_INCLUDE = {
+const WORK_REQUEST_SEARCH_BODY = {
+  page: 1,
+  limit: 25,
+  sortBy: "createdAt",
+  sortOrder: "desc",
+  include: {
+    project: { select: { projectName: true } },
+    workGroup: { select: { itemWorkGroupName: true } },
+    workSubGroup: { select: { itemWorkSubGroupName: true } },
+    workItem: { select: { nameCode: true } },
+    assignedUsers: { include: { assignedToUser: { select: { nameCode: true } } } },
+  },
+} as const;
+const WORK_DETAILS_INCLUDE = {
   workGroup: { include: { itemWorkGroup: true } },
   workSubGroup: { include: { itemWorkSubGroup: true } },
   workItem: true,
@@ -36,46 +49,70 @@ const STATUS_PRESENTATION: Readonly<
   STARTED: { label: "Started", tone: "info" },
 };
 
-interface GeneralCodeDto {
-  codeValue: string;
-}
-
 interface WorkGroupDto {
-  itemWorkGroup: GeneralCodeDto;
+  name: string;
 }
 
 interface WorkSubGroupDto {
-  itemWorkSubGroup: GeneralCodeDto;
+  name: string;
 }
 
 interface WorkItemDto {
   itemCode: string;
   itemName: string;
   description: string | null;
-  partModel: string | null;
-  weightKg: number | null;
-  weightuom: string | null;
   uom: string | null;
 }
 
+interface WorkHistoryDto {
+  status: string;
+  actionAt: string;
+}
+interface WorkRequestProjectDto { projectName: string; }
+interface WorkRequestListWorkGroupDto { itemWorkGroupName: string; }
+interface WorkRequestListWorkSubGroupDto { itemWorkSubGroupName: string; }
+interface WorkRequestListWorkItemDto { nameCode: string; }
+interface WorkRequestAssignedUserDto { assignedToUser: { nameCode: string }; }
 interface WorkRequestListItemDto {
   id: string;
   requestNumber: string;
-  assignedToUserId: string;
-  createdById: string;
-  workGroup: WorkGroupDto;
-  workSubGroup: WorkSubGroupDto;
-  workItem: WorkItemDto;
+  projectId: string;
+  clientId: number;
+  workGroupId: string;
+  workSubGroupId: string;
+  workItemId: string;
   targetCompletionDate: string;
   status: string;
   progressPercent: number | null;
   remarks: string | null;
   mediaUrls: string[] | null;
   voiceNoteUrl: string | null;
+  createdById: string;
   createdAt: string;
   updatedAt: string | null;
+  project: WorkRequestProjectDto;
+  workGroup: WorkRequestListWorkGroupDto;
+  workSubGroup: WorkRequestListWorkSubGroupDto;
+  workItem: WorkRequestListWorkItemDto;
+  assignedUsers: WorkRequestAssignedUserDto[];
 }
-
+interface WorkRequestDetailsDto {
+  id: string;
+  requestNumber: string;
+  createdById: string;
+  assignedToUserName: string | null;
+  workGroup: WorkGroupDto;
+  workSubGroup: WorkSubGroupDto;
+  workItem: WorkItemDto;
+  targetCompletionDate: string;
+  progressPercent: number | null;
+  remarks: string | null;
+  mediaUrls: string[] | null;
+  voiceNoteUrl: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+  history: WorkHistoryDto[];
+}
 interface WorkRequestSearchResponseDto {
   status: string;
   data: {
@@ -85,9 +122,7 @@ interface WorkRequestSearchResponseDto {
 
 interface WorkRequestDetailsResponseDto {
   status: string;
-  data: {
-    data: WorkRequestListItemDto;
-  };
+  data: WorkRequestDetailsDto;
 }
 
 interface UserLookupDto {
@@ -103,7 +138,7 @@ interface UserSearchResponseDto {
 }
 
 interface WorkMappingOptions {
-  item: WorkRequestListItemDto;
+  item: WorkRequestDetailsDto;
   userNames: ReadonlyMap<string, string>;
 }
 
@@ -116,40 +151,77 @@ const isNullableNumber = (value: unknown): value is number | null =>
 const isNullableStringArray = (value: unknown): value is string[] | null =>
   value === null ||
   Array.isArray(value) && value.every((item) => typeof item === "string");
-const isGeneralCodeDto = (value: unknown): value is GeneralCodeDto =>
-  isRecord(value) && typeof value.codeValue === "string";
 const isWorkGroupDto = (value: unknown): value is WorkGroupDto =>
-  isRecord(value) && isGeneralCodeDto(value.itemWorkGroup);
+  isRecord(value) && typeof value.name === "string";
 const isWorkSubGroupDto = (value: unknown): value is WorkSubGroupDto =>
-  isRecord(value) && isGeneralCodeDto(value.itemWorkSubGroup);
+  isRecord(value) && typeof value.name === "string";
 const isWorkItemDto = (value: unknown): value is WorkItemDto =>
   isRecord(value) &&
   typeof value.itemCode === "string" &&
   typeof value.itemName === "string" &&
   isNullableString(value.description) &&
-  isNullableString(value.partModel) &&
-  isNullableNumber(value.weightKg) &&
-  isNullableString(value.weightuom) &&
   isNullableString(value.uom);
+const isWorkHistoryDto = (value: unknown): value is WorkHistoryDto =>
+  isRecord(value) &&
+  typeof value.status === "string" &&
+  typeof value.actionAt === "string";
+const isWorkRequestProjectDto = (value: unknown): value is WorkRequestProjectDto =>
+  isRecord(value) && typeof value.projectName === "string";
+const isWorkRequestListWorkGroupDto = (value: unknown): value is WorkRequestListWorkGroupDto =>
+  isRecord(value) && typeof value.itemWorkGroupName === "string";
+const isWorkRequestListWorkSubGroupDto = (value: unknown): value is WorkRequestListWorkSubGroupDto =>
+  isRecord(value) && typeof value.itemWorkSubGroupName === "string";
+const isWorkRequestListWorkItemDto = (value: unknown): value is WorkRequestListWorkItemDto =>
+  isRecord(value) && typeof value.nameCode === "string";
+const isWorkRequestAssignedUserDto = (value: unknown): value is WorkRequestAssignedUserDto =>
+  isRecord(value) && isRecord(value.assignedToUser) &&
+  typeof value.assignedToUser.nameCode === "string";
 const isWorkRequestListItemDto = (
   value: unknown,
 ): value is WorkRequestListItemDto =>
   isRecord(value) &&
   typeof value.id === "string" &&
   typeof value.requestNumber === "string" &&
-  typeof value.assignedToUserId === "string" &&
-  typeof value.createdById === "string" &&
-  isWorkGroupDto(value.workGroup) &&
-  isWorkSubGroupDto(value.workSubGroup) &&
-  isWorkItemDto(value.workItem) &&
+  typeof value.projectId === "string" &&
+  typeof value.clientId === "number" &&
+  typeof value.workGroupId === "string" &&
+  typeof value.workSubGroupId === "string" &&
+  typeof value.workItemId === "string" &&
   typeof value.targetCompletionDate === "string" &&
   typeof value.status === "string" &&
   isNullableNumber(value.progressPercent) &&
   isNullableString(value.remarks) &&
   isNullableStringArray(value.mediaUrls) &&
   isNullableString(value.voiceNoteUrl) &&
+  typeof value.createdById === "string" &&
   typeof value.createdAt === "string" &&
-  isNullableString(value.updatedAt);
+  isNullableString(value.updatedAt) &&
+  isWorkRequestProjectDto(value.project) &&
+  isWorkRequestListWorkGroupDto(value.workGroup) &&
+  isWorkRequestListWorkSubGroupDto(value.workSubGroup) &&
+  isWorkRequestListWorkItemDto(value.workItem) &&
+  Array.isArray(value.assignedUsers) &&
+  value.assignedUsers.every(isWorkRequestAssignedUserDto);
+const isWorkRequestDetailsDto = (
+  value: unknown,
+): value is WorkRequestDetailsDto =>
+  isRecord(value) &&
+  typeof value.id === "string" &&
+  typeof value.requestNumber === "string" &&
+  typeof value.createdById === "string" &&
+  isNullableString(value.assignedToUserName) &&
+  isWorkGroupDto(value.workGroup) &&
+  isWorkSubGroupDto(value.workSubGroup) &&
+  isWorkItemDto(value.workItem) &&
+  typeof value.targetCompletionDate === "string" &&
+  isNullableNumber(value.progressPercent) &&
+  isNullableString(value.remarks) &&
+  isNullableStringArray(value.mediaUrls) &&
+  isNullableString(value.voiceNoteUrl) &&
+  typeof value.createdAt === "string" &&
+  isNullableString(value.updatedAt) &&
+  Array.isArray(value.history) &&
+  value.history.every(isWorkHistoryDto);
 const isWorkRequestSearchResponseDto = (
   value: unknown,
 ): value is WorkRequestSearchResponseDto =>
@@ -163,8 +235,7 @@ const isWorkRequestDetailsResponseDto = (
 ): value is WorkRequestDetailsResponseDto =>
   isRecord(value) &&
   typeof value.status === "string" &&
-  isRecord(value.data) &&
-  isWorkRequestListItemDto(value.data.data);
+  isWorkRequestDetailsDto(value.data);
 const isUserLookupDto = (value: unknown): value is UserLookupDto =>
   isRecord(value) &&
   typeof value.id === "string" &&
@@ -237,30 +308,30 @@ const mapAttachments = (
   ...(voiceNoteUrl ? [mapRemoteAttachment(voiceNoteUrl, "audio")] : []),
 ];
 
-const getWeightLabel = (item: WorkItemDto): string | null => {
-  if (item.weightKg === null) return null;
-  return `${item.weightKg}${item.weightuom ? ` ${item.weightuom}` : ""}`;
-};
+const getWeightLabel = (): string | null => null;
 
 const getUserName = (
   userNames: ReadonlyMap<string, string>,
-  userId: string,
-): string => userNames.get(userId) ?? "Unknown user";
+  userId?: string | null,
+): string => (userId ? userNames.get(userId) ?? "Unknown user" : "Unknown user");
 
-const mapWorkRequestDto = ({
+const mapWorkRequestListDto = ({
   item,
   userNames,
-}: WorkMappingOptions): WorkItemViewModel => ({
+}: {
+  item: WorkRequestListItemDto;
+  userNames: ReadonlyMap<string, string>;
+}): WorkItemViewModel => ({
   id: item.id,
   requestNumber: item.requestNumber,
-  workGroup: item.workGroup.itemWorkGroup.codeValue,
-  workSubgroup: item.workSubGroup.itemWorkSubGroup.codeValue,
-  workItem: item.workItem.itemName,
-  workItemCode: item.workItem.itemCode,
-  workItemDescription: item.workItem.description,
-  partModel: item.workItem.partModel,
-  weightLabel: getWeightLabel(item.workItem),
-  unitOfMeasure: item.workItem.uom,
+  workGroup: item.workGroup.itemWorkGroupName,
+  workSubgroup: item.workSubGroup.itemWorkSubGroupName,
+  workItem: item.workItem.nameCode,
+  workItemCode: item.workItem.nameCode,
+  workItemDescription: null,
+  partModel: null,
+  weightLabel: null,
+  unitOfMeasure: null,
   targetCompletion: item.targetCompletionDate,
   status: STATUS_PRESENTATION[item.status] ?? {
     label: item.status,
@@ -268,11 +339,45 @@ const mapWorkRequestDto = ({
   },
   completionPercentage: item.progressPercent,
   remarks: item.remarks,
-  assignedToName: getUserName(userNames, item.assignedToUserId),
+  assignedToName: item.assignedUsers.map(({ assignedToUser }) => assignedToUser.nameCode).join(", "),
   createdByName: getUserName(userNames, item.createdById),
   createdAt: item.createdAt,
   updatedAt: item.updatedAt ?? item.createdAt,
   availableTransitions: getAvailableTransitions(item.status),
+  attachments: mapAttachments(item.mediaUrls, item.voiceNoteUrl),
+});
+const getLatestHistoryStatus = (history: readonly WorkHistoryDto[]): string =>
+  history.reduce(
+    (latestHistory, candidate) =>
+      candidate.actionAt > latestHistory.actionAt ? candidate : latestHistory,
+    history[0] ?? { status: "", actionAt: "" },
+  ).status;
+const mapWorkRequestDto = ({
+  item,
+  userNames,
+}: WorkMappingOptions): WorkItemViewModel => ({
+  id: item.id,
+  requestNumber: item.requestNumber,
+  workGroup: item.workGroup.name,
+  workSubgroup: item.workSubGroup.name,
+  workItem: item.workItem.itemName,
+  workItemCode: item.workItem.itemCode,
+  workItemDescription: item.workItem.description,
+  partModel: null,
+  weightLabel: getWeightLabel(),
+  unitOfMeasure: item.workItem.uom,
+  targetCompletion: item.targetCompletionDate,
+  status: STATUS_PRESENTATION[getLatestHistoryStatus(item.history)] ?? {
+    label: getLatestHistoryStatus(item.history),
+    tone: "neutral",
+  },
+  completionPercentage: item.progressPercent,
+  remarks: item.remarks,
+  assignedToName: item.assignedToUserName ?? "",
+  createdByName: getUserName(userNames, item.createdById),
+  createdAt: item.createdAt,
+  updatedAt: item.updatedAt ?? item.createdAt,
+  availableTransitions: getAvailableTransitions(getLatestHistoryStatus(item.history)),
   attachments: mapAttachments(item.mediaUrls, item.voiceNoteUrl),
 });
 
@@ -297,17 +402,13 @@ const getUserNames = async (
 
 const getAssignedWorkDtos = async (
   session: AuthSession,
+  page: number = 1,
 ): Promise<readonly WorkRequestListItemDto[]> => {
   const { response, body } = await executeJsonRequest({
-    url: `${API_BASE_URL}/workRequest/search-work-request`,
+    url: `${API_BASE_URL}/work-request/search`,
     method: "POST",
     headers: createJsonHeaders(session),
-    body: {
-      page: 1,
-      limit: 50,
-      filters: { assignedToUserId: session.user.id },
-      include: WORK_INCLUDE,
-    },
+    body: { ...WORK_REQUEST_SEARCH_BODY, page },
   });
   if (!response.ok) {
     throw new Error("Assigned work could not be loaded.");
@@ -317,19 +418,18 @@ const getAssignedWorkDtos = async (
   }
   return body.data.data;
 };
-
 const getWorkRequestDto = async ({
   session,
   id,
 }: {
   session: AuthSession;
   id: string;
-}): Promise<WorkRequestListItemDto | null> => {
+}): Promise<WorkRequestDetailsDto | null> => {
   const { response, body } = await executeJsonRequest({
-    url: `${API_BASE_URL}/workRequest/details-work-request/${id}`,
+    url: `${API_BASE_URL}/work-request/details/${id}`,
     method: "POST",
     headers: createJsonHeaders(session),
-    body: { include: WORK_INCLUDE },
+    body: { include: WORK_DETAILS_INCLUDE },
   });
   if (response.status === 404) return null;
   if (!response.ok) {
@@ -338,7 +438,7 @@ const getWorkRequestDto = async ({
   if (!isWorkRequestDetailsResponseDto(body)) {
     throw new Error("The work details response was incomplete.");
   }
-  return body.data.data;
+  return body.data;
 };
 
 const appendLocalAttachments = (
@@ -387,13 +487,14 @@ const getActionPath = ({
 export class LocalWorkRepository {
   async getAssignedWork(
     session: AuthSession,
+    page: number = 1,
   ): Promise<readonly WorkItemViewModel[]> {
     const [workRequestDtos, userNames] = await Promise.all([
-      getAssignedWorkDtos(session),
+      getAssignedWorkDtos(session, page),
       getUserNames(session),
     ]);
     return workRequestDtos.map((item) =>
-      mapWorkRequestDto({ item, userNames }),
+      mapWorkRequestListDto({ item, userNames }),
     );
   }
 
@@ -426,7 +527,7 @@ export class LocalWorkRepository {
       currentItem,
     });
     const { response } = await executeMultipartRequest({
-      url: `${API_BASE_URL}/workRequest/${actionPath}/${input.id}`,
+      url: `${API_BASE_URL}/work-request/${actionPath}/${input.id}`,
       method: "PUT",
       headers: createAuthenticatedHeaders(session),
       body: createActionFormData(input),
@@ -444,3 +545,12 @@ export class LocalWorkRepository {
 }
 
 export const workRepository = new LocalWorkRepository();
+
+
+
+
+
+
+
+
+

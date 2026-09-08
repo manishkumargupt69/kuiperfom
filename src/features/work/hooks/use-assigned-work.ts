@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 
 import { workRepository } from "@/src/features/work/data/local-work.repository";
 import type { AuthSession } from "@/src/features/auth/domain/auth.types";
@@ -9,10 +9,13 @@ import type {
 import type { ViewState } from "@/src/types/view-state";
 
 const WORK_QUERY_KEY = "assigned-work";
+const PAGE_LIMIT = 25;
 
 interface AssignedWorkResult {
   viewState: ViewState<readonly WorkItemViewModel[]>;
   reload: () => Promise<void>;
+  loadMore: () => void;
+  isFetchingNextPage: boolean;
 }
 
 const matchesSearch = (item: WorkItemViewModel, searchText: string): boolean => {
@@ -55,17 +58,46 @@ export const useAssignedWork = (
   sortKey: WorkSortKey,
 ): AssignedWorkResult => {
   const userId = session?.user.id ?? "";
-  const query = useQuery({ queryKey: [WORK_QUERY_KEY, userId], queryFn: () => session ? workRepository.getAssignedWork(session) : Promise.resolve([]), enabled: Boolean(session) });
+  
+  const query = useInfiniteQuery({
+    queryKey: [WORK_QUERY_KEY, userId],
+    queryFn: ({ pageParam = 1 }) => 
+      session ? workRepository.getAssignedWork(session, pageParam as number) : Promise.resolve([]),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      return lastPage.length === PAGE_LIMIT ? allPages.length + 1 : undefined;
+    },
+    enabled: Boolean(session),
+  });
+
   const reload = async (): Promise<void> => { await query.refetch(); };
+  const loadMore = () => {
+    if (query.hasNextPage && !query.isFetchingNextPage) {
+      void query.fetchNextPage();
+    }
+  };
 
-  if (!userId || query.fetchStatus === "idle" && query.status === "pending") return { viewState: { status: "idle" }, reload };
-  if (query.isPending) return { viewState: { status: "loading" }, reload };
-  if (query.isError) return { viewState: { status: "error", message: "Assigned work could not be loaded." }, reload };
+  const isFetchingNextPage = query.isFetchingNextPage;
 
+  if (!userId || query.fetchStatus === "idle" && query.status === "pending") {
+    return { viewState: { status: "idle" }, reload, loadMore, isFetchingNextPage };
+  }
+  if (query.status === "pending") {
+    return { viewState: { status: "loading" }, reload, loadMore, isFetchingNextPage };
+  }
+  if (query.status === "error") {
+    return { viewState: { status: "error", message: "Assigned work could not be loaded." }, reload, loadMore, isFetchingNextPage };
+  }
+
+  const allItems = query.data.pages.flat();
   const filteredItems = sortWorkItems(
-    query.data.filter((item) => matchesSearch(item, searchText)),
+    allItems.filter((item) => matchesSearch(item, searchText)),
     sortKey,
   );
-  if (filteredItems.length === 0) return { viewState: { status: "empty" }, reload };
-  return { viewState: { status: "success", data: filteredItems }, reload };
+
+  if (filteredItems.length === 0) {
+    return { viewState: { status: "empty" }, reload, loadMore, isFetchingNextPage };
+  }
+
+  return { viewState: { status: "success", data: filteredItems }, reload, loadMore, isFetchingNextPage };
 };

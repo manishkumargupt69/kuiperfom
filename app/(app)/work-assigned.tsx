@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { useCallback, useState } from "react";
-import { FlatList, StyleSheet, View } from "react-native";
+import { ActivityIndicator, FlatList, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
 
 import AppHeader from "@/src/components/ui/AppHeader";
@@ -24,7 +24,7 @@ export default function WorkAssignedScreen(): ReactElement {
   const [sortKey, setSortKey] = useState<WorkSortKey>("target-asc");
   const [isSortVisible, setIsSortVisible] = useState(false);
   const session = useAuthStore((state) => state.session);
-  const { viewState, reload } = useAssignedWork(session, searchText, sortKey);
+  const { viewState, reload, loadMore, isFetchingNextPage } = useAssignedWork(session, searchText, sortKey);
 
   const handleBack = useCallback((): void => router.back(), []);
   const clearSearch = useCallback((): void => setSearchText(""), []);
@@ -43,6 +43,16 @@ export default function WorkAssignedScreen(): ReactElement {
     setIsSortVisible(false);
   }, []);
 
+  const renderFooter = useCallback(
+    () =>
+      isFetchingNextPage ? (
+        <View style={styles.footerLoader}>
+          <ActivityIndicator size="small" />
+        </View>
+      ) : null,
+    [isFetchingNextPage]
+  );
+
   return (
     <ScreenContainer>
       <AppHeader onBack={handleBack} title="Work Assigned" />
@@ -51,7 +61,17 @@ export default function WorkAssignedScreen(): ReactElement {
         <SecondaryButton label="Sort" onPress={openSort} />
       </View>
       {viewState.status === "success" ? (
-        <FlatList contentContainerStyle={styles.list} data={viewState.data} keyExtractor={keyExtractor} keyboardShouldPersistTaps="handled" renderItem={renderItem} showsVerticalScrollIndicator={false} />
+        <FlatList 
+          contentContainerStyle={styles.list} 
+          data={viewState.data} 
+          keyExtractor={keyExtractor} 
+          keyboardShouldPersistTaps="handled" 
+          renderItem={renderItem} 
+          showsVerticalScrollIndicator={false} 
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={renderFooter}
+        />
       ) : (
         <View style={styles.state}><AsyncStateView emptyMessage="No assigned work found." message={viewState.status === "error" ? viewState.message : undefined} onRetry={handleRetry} status={viewState.status} variant="list" /></View>
       )}
@@ -69,4 +89,5 @@ const styles = StyleSheet.create({
   tools: { flexDirection: "row", gap: SPACING.small, paddingHorizontal: SCREEN_HORIZONTAL_PADDING, paddingVertical: SPACING.medium },
   list: { paddingBottom: SPACING.section, paddingHorizontal: SCREEN_HORIZONTAL_PADDING },
   state: { flex: 1, paddingHorizontal: SCREEN_HORIZONTAL_PADDING },
+  footerLoader: { paddingVertical: SPACING.medium, alignItems: "center", justifyContent: "center" },
 });

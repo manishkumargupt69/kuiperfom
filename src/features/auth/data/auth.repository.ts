@@ -161,6 +161,7 @@ export class AuthRepository {
         getApiErrorMessage(responseBody, "Sign-in could not be completed."),
       );
     }
+    console.log("LOGIN API RESPONSE:", JSON.stringify(responseBody, null, 2));
     if (!isLoginResponseDto(responseBody)) {
       throw new Error("The login response was incomplete.");
     }
