@@ -1,13 +1,12 @@
 {
   "expo": {
-    "name": "FOM",
+    "name": "SiteGuard247",
     "slug": "field-operations-management",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "fom",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
     },
@@ -18,7 +17,6 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "edgeToEdgeEnabled": true,
       "softwareKeyboardLayoutMode": "resize",
       "predictiveBackGestureEnabled": false
     },
@@ -57,8 +55,7 @@
         }
       ],
       "expo-video",
-      "expo-asset",
-      "react-native-compressor"
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,

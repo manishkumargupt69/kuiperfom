@@ -9,6 +9,12 @@ const DATE_TIME_FORMATTER = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
 });
 
+const DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+});
+
 const getPart = (
   parts: readonly Intl.DateTimeFormatPart[],
   type: Intl.DateTimeFormatPartTypes,
@@ -27,4 +33,17 @@ export const formatDateTime = (value: string): string => {
   const minute = getPart(parts, "minute");
   const dayPeriod = getPart(parts, "dayPeriod").toLocaleUpperCase();
   return `${day} ${month} ${year} ${hour}:${minute} ${dayPeriod}`;
+};
+
+export const formatDate = (value: string): string => {
+  if (!value) return "TBD";
+  const normalizedValue = value.replace(DATABASE_DATE_PATTERN, "$1T$2");
+  const date = new Date(normalizedValue);
+  if (Number.isNaN(date.getTime())) return "—";
+
+  const parts = DATE_FORMATTER.formatToParts(date);
+  const day = getPart(parts, "day");
+  const month = getPart(parts, "month").toLocaleUpperCase();
+  const year = getPart(parts, "year");
+  return `${day} ${month} ${year}`;
 };

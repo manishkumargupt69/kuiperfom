@@ -1,5 +1,5 @@
 {
-  "name": "fom",
+  "name": "siteguard247",
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
@@ -11,6 +11,7 @@
     "lint": "expo lint app src"
   },
   "dependencies": {
+    "@expo-google-fonts/ibm-plex-sans": "^0.4.1",
     "@expo/vector-icons": "^15.0.3",
     "@react-navigation/drawer": "^7.13.10",
     "@react-navigation/native": "^7.1.8",
