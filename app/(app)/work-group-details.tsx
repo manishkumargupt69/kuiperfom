@@ -1,7 +1,8 @@
 import type { ReactElement } from "react";
-import { useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
+import { Feather } from "@expo/vector-icons";
 
 import AppHeader from "@/src/components/ui/AppHeader";
 import AsyncStateView from "@/src/components/ui/AsyncStateView";
@@ -15,7 +16,8 @@ import { useProjectDetails } from "@/src/features/dashboard/hooks/use-project-de
 import ProjectWorkItemRow from "@/src/features/dashboard/presentation/ProjectWorkItemRow";
 import WorkGroupCard from "@/src/features/dashboard/presentation/WorkGroupCard";
 import { useDashboardStore } from "@/src/features/dashboard/state/dashboard-store";
-import { COLORS, SCREEN_HORIZONTAL_PADDING, SPACING, TYPOGRAPHY } from "@/src/theme/tokens";
+import { COLORS, RADII, SCREEN_HORIZONTAL_PADDING, SPACING, TYPOGRAPHY } from "@/src/theme/tokens";
+import { formatDate } from "@/src/utils/format-date-time";
 
 interface WorkGroupListItem {
   kind: "work-group";
@@ -31,23 +33,12 @@ interface WorkItemListItem {
 
 type ProjectDetailsListItem = WorkGroupListItem | WorkItemListItem;
 
-const getProjectDetailsListItems = (
-  project: ProjectDetailsViewModel,
-): readonly ProjectDetailsListItem[] =>
-  project.workGroups.flatMap((workGroup) => [
-    { kind: "work-group" as const, id: `work-group-${workGroup.id}`, workGroup },
-    ...workGroup.workItems.map((workItem) => ({
-      kind: "work-item" as const,
-      id: `work-item-${workItem.id}`,
-      workItem,
-    })),
-  ]);
-
 const getItemKey = (item: ProjectDetailsListItem): string => item.id;
 
 export default function WorkGroupDetailsScreen(): ReactElement {
   const selectedProject = useDashboardStore((state) => state.selectedProject);
   const { viewState, reload } = useProjectDetails(selectedProject?.id ?? null);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   const handleBack = useCallback((): void => {
     router.back();
@@ -57,29 +48,50 @@ export default function WorkGroupDetailsScreen(): ReactElement {
     void reload();
   }, [reload]);
 
-  const handleWorkItemPress = useCallback(
-    (workItem: DashboardWorkItemViewModel): void => {
-      router.push({
-        pathname: "/(app)/work-assigned/[id]",
-        params: { id: workItem.id },
-      });
-    },
-    [],
-  );
+  const toggleGroup = useCallback((groupId: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupId)) next.delete(groupId);
+      else next.add(groupId);
+      return next;
+    });
+  }, []);
+
+  const listItems = useMemo(() => {
+    if (viewState.status !== "success") return [];
+    const project = viewState.data;
+    return project.workGroups.flatMap((workGroup) => {
+      const groupItem = { kind: "work-group" as const, id: `work-group-${workGroup.id}`, workGroup };
+      if (expandedGroups.has(workGroup.id)) {
+        const items = workGroup.workItems.map((workItem) => ({
+          kind: "work-item" as const,
+          id: `work-item-${workItem.id}`,
+          workItem,
+        }));
+        return [groupItem, ...items];
+      }
+      return [groupItem];
+    });
+  }, [viewState, expandedGroups]);
 
   const renderItem = useCallback(
     ({ item }: { item: ProjectDetailsListItem }): ReactElement => {
       if (item.kind === "work-group") {
-        return <WorkGroupCard workGroup={item.workGroup} />;
+        return (
+          <WorkGroupCard
+            workGroup={item.workGroup}
+            expanded={expandedGroups.has(item.workGroup.id)}
+            onPress={() => toggleGroup(item.workGroup.id)}
+          />
+        );
       }
       return (
         <ProjectWorkItemRow
-          onPress={handleWorkItemPress}
           workItem={item.workItem}
         />
       );
     },
-    [handleWorkItemPress],
+    [expandedGroups, toggleGroup],
   );
 
   const renderHeader = useCallback(
@@ -88,12 +100,35 @@ export default function WorkGroupDetailsScreen(): ReactElement {
       const project = viewState.data;
       return (
         <View style={styles.headerContainer}>
-          <Text style={styles.sectionTitle}>Project details</Text>
-          <View style={styles.detailsCard}>
-            <Text style={styles.detail}>Client: {project.clientName}</Text>
-            <Text style={styles.detail}>Project: {project.projectName}</Text>
-            <Text style={styles.detail}>City: {project.city}</Text>
-            <Text style={styles.detail}>Start date: {project.startDate}</Text>
+          <View style={styles.projectCard}>
+            <View style={styles.projectCardHeader}>
+              <View style={styles.projectIconWrapper}>
+                <Feather name="briefcase" size={22} color={COLORS.accent} />
+              </View>
+              <View style={styles.projectTitleWrapper}>
+                <Text style={styles.projectSubtitle}>Project Details</Text>
+                <Text style={styles.projectTitle} numberOfLines={2}>{project.projectName}</Text>
+              </View>
+            </View>
+            <View style={styles.projectMetaContainer}>
+              <View style={styles.projectMetaItem}>
+                <Feather name="user" size={14} color={COLORS.inkMuted} style={styles.projectMetaIcon} />
+                <Text style={styles.projectMetaLabel}>Client</Text>
+                <Text style={styles.projectMetaValue} numberOfLines={1}>{project.clientName}</Text>
+              </View>
+              <View style={styles.projectMetaItem}>
+                <Feather name="map-pin" size={14} color={COLORS.inkMuted} style={styles.projectMetaIcon} />
+                <Text style={styles.projectMetaLabel}>City</Text>
+                <Text style={styles.projectMetaValue} numberOfLines={1}>{project.city}</Text>
+              </View>
+              <View style={styles.projectMetaItem}>
+                <Feather name="calendar" size={14} color={COLORS.inkMuted} style={styles.projectMetaIcon} />
+                <Text style={styles.projectMetaLabel}>Start Date</Text>
+                <Text style={styles.projectMetaValue} numberOfLines={1}>
+                  {formatDate(project.startDate)}
+                </Text>
+              </View>
+            </View>
           </View>
           <Text style={styles.sectionTitle}>Work groups</Text>
         </View>
@@ -124,7 +159,7 @@ export default function WorkGroupDetailsScreen(): ReactElement {
       {viewState.status === "success" ? (
         <FlatList
           contentContainerStyle={styles.list}
-          data={getProjectDetailsListItems(viewState.data)}
+          data={listItems}
           keyExtractor={getItemKey}
           ListHeaderComponent={renderHeader}
           renderItem={renderItem}
@@ -163,18 +198,78 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: -0.3,
     paddingBottom: SPACING.medium,
-    paddingTop: SPACING.large,
+    paddingTop: SPACING.medium,
   },
-  detailsCard: {
+  projectCard: {
     backgroundColor: COLORS.surface,
+    borderRadius: RADII.large,
+    borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: SPACING.medium,
-    borderWidth: StyleSheet.hairlineWidth,
-    gap: SPACING.small,
     padding: SPACING.large,
+    shadowColor: COLORS.ink,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 2,
+    marginTop: SPACING.medium,
   },
-  detail: {
+  projectCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: SPACING.large,
+  },
+  projectIconWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: RADII.medium,
+    backgroundColor: COLORS.accentSoft,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: SPACING.medium,
+  },
+  projectTitleWrapper: {
+    flex: 1,
+  },
+  projectSubtitle: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.inkMuted,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  projectTitle: {
+    ...TYPOGRAPHY.sectionTitle,
     color: COLORS.ink,
+    fontWeight: "800",
+    lineHeight: 28,
+  },
+  projectMetaContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: SPACING.medium,
+    backgroundColor: COLORS.background,
+    padding: SPACING.medium,
+    borderRadius: RADII.medium,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.border,
+  },
+  projectMetaItem: {
+    flex: 1,
+    minWidth: 80,
+  },
+  projectMetaIcon: {
+    marginBottom: 6,
+  },
+  projectMetaLabel: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.inkMuted,
+    fontWeight: "500",
+    marginBottom: 2,
+  },
+  projectMetaValue: {
     ...TYPOGRAPHY.body,
+    color: COLORS.ink,
+    fontWeight: "700",
   },
 });

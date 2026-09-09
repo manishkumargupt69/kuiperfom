@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 import { Redirect } from "expo-router";
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { View } from "react-native";
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -53,21 +54,33 @@ export default function TabsLayout(): ReactElement {
         name="dashboard"
         options={{
           title: "Dashboard",
-          tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} />,
+          tabBarIcon: ({ color, size, focused }) => (
+            <View style={[{ width: 48, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" }, focused && { backgroundColor: COLORS.accentSoft }]}>
+              <Ionicons name="home-outline" size={size} color={color} />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
         name="home"
         options={{
           title: "Modules",
-          tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline" size={size} color={color} />,
+          tabBarIcon: ({ color, size, focused }) => (
+            <View style={[{ width: 48, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" }, focused && { backgroundColor: COLORS.accentSoft }]}>
+              <Ionicons name="grid-outline" size={size} color={color} />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",
-          tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} />,
+          tabBarIcon: ({ color, size, focused }) => (
+            <View style={[{ width: 48, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" }, focused && { backgroundColor: COLORS.accentSoft }]}>
+              <Ionicons name="person-outline" size={size} color={color} />
+            </View>
+          ),
         }}
       />
     </Tabs>
