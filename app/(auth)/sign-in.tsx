@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 
+import BrandLogo from "@/src/components/branding/BrandLogo";
 import ScreenContainer from "@/src/components/ui/ScreenContainer";
 import type { AuthMode } from "@/src/features/auth/domain/auth.types";
 import { useSignIn } from "@/src/features/auth/hooks/use-sign-in";
@@ -41,11 +42,9 @@ export default function SignInScreen(): ReactElement {
           <View style={styles.header}>
             <View style={styles.brandMarkContainer}>
               <View style={styles.brandMark}>
-                <Text accessibilityRole="header" style={styles.brandMarkText}>FOM</Text>
+                <BrandLogo fontSize={28} />
               </View>
             </View>
-            <Text style={styles.brandSubtitle}>Field Operations Management</Text>
-            <Text style={styles.title}>Welcome back</Text>
           </View>
           
           <View style={styles.panel}>
@@ -83,25 +82,12 @@ const styles = StyleSheet.create({
   content: { flexGrow: 1, justifyContent: "center", paddingHorizontal: SCREEN_HORIZONTAL_PADDING, paddingVertical: SPACING.extraLarge },
   header: { alignItems: "center", marginBottom: SPACING.extraLarge },
   brandMarkContainer: {
-    padding: SPACING.small,
-    backgroundColor: COLORS.surface,
-    borderRadius: RADII.sheet,
-    shadowColor: COLORS.ink,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.05,
-    shadowRadius: 24,
-    elevation: 4,
     marginBottom: SPACING.large,
   },
   brandMark: { 
     alignItems: "center", 
-    backgroundColor: COLORS.accent, 
-    borderRadius: RADII.large, 
-    height: 80, 
     justifyContent: "center", 
-    width: 80 
   },
-  brandMarkText: { color: COLORS.white, fontSize: 24, fontWeight: "900", letterSpacing: 2 },
   brandSubtitle: { color: COLORS.inkMuted, ...TYPOGRAPHY.caption, letterSpacing: 1.5, textTransform: "uppercase", fontWeight: "600", marginBottom: SPACING.medium },
   title: { color: COLORS.ink, ...TYPOGRAPHY.screenTitle, fontWeight: "800", letterSpacing: -0.5 },
   panel: { gap: SPACING.large },

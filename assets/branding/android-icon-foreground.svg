@@ -1,6 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  <path d="M356 362h312" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round" opacity="0.75"/>
-  <text x="512" y="548" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="200" font-weight="700" letter-spacing="7" text-anchor="middle">FOM</text>
-  <text x="512" y="624" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="29" font-weight="600" letter-spacing="2" text-anchor="middle">FIELD OPERATIONS</text>
-  <text x="512" y="666" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="29" font-weight="600" letter-spacing="2" text-anchor="middle">MANAGEMENT</text>
+  <text x="120" y="540" fill="#082823" font-family="IBM Plex Sans, sans-serif" font-size="120" font-weight="700" text-anchor="start">SITEGUARD</text>
+  <rect x="740" y="435" width="160" height="120" rx="20" fill="#082823"/>
+  <text x="820" y="525" fill="#12D18E" font-family="IBM Plex Sans, sans-serif" font-size="80" font-weight="700" text-anchor="middle">24/7</text>
 </svg>

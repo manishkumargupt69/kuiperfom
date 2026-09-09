@@ -81,7 +81,7 @@ export default function ProfileScreen(): ReactElement {
   return (
     <>
       <ScreenContainer>
-        <AppHeader onBack={handleBack} title="Profile" />
+        <AppHeader title="SiteGuard247" showMenu={true} />
         <UserProfileView
           onChangePasswordPress={changePassword.open}
           onMpinPress={handleMpinPress}

@@ -56,7 +56,7 @@ export default function HomeScreen(): ReactElement {
   const handleRetry = useCallback((): void => { void reload(); }, [reload]);
   return (
     <ScreenContainer>
-      <AppHeader title="FOM" showMenu={true} />
+      <AppHeader title="SiteGuard247" showMenu={true} />
       {viewState.status === "success" ? <FlatList columnWrapperStyle={styles.moduleRow} contentContainerStyle={styles.list} data={viewState.data} keyExtractor={getModuleKey} ListHeaderComponent={renderModulesHeader} numColumns={MODULE_GRID_COLUMNS} renderItem={renderModule} showsVerticalScrollIndicator={false} /> : <View style={styles.state}>{renderModulesHeader()}<AsyncStateView emptyMessage="No mobile modules are assigned to your role." message={viewState.status === "error" ? viewState.message : undefined} onRetry={handleRetry} status={viewState.status} variant="list" /></View>}
     </ScreenContainer>
   );

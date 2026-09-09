@@ -54,7 +54,7 @@ export default function DashboardScreen(): ReactElement {
 
   return (
     <ScreenContainer>
-      <AppHeader title="Dashboard" showMenu={true} />
+      <AppHeader title="SiteGuard247" showMenu={true} />
       {viewState.status === "success" ? (
         <FlatList
           contentContainerStyle={styles.list}

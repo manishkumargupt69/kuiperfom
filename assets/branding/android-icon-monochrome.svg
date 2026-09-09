@@ -1,3 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="432" height="432" viewBox="0 0 432 432">
-  <text x="216" y="250" fill="#000000" font-family="Arial, sans-serif" font-size="112" font-weight="700" letter-spacing="4" text-anchor="middle">FOM</text>
+  <text x="50" y="235" fill="#000000" font-family="IBM Plex Sans, sans-serif" font-size="50" font-weight="700" text-anchor="start">SITEGUARD</text>
+  <rect x="310" y="190" width="70" height="50" rx="8" fill="#000000"/>
+  <text x="345" y="228" fill="#FFFFFF" font-family="IBM Plex Sans, sans-serif" font-size="32" font-weight="700" text-anchor="middle">24/7</text>
 </svg>
