@@ -1,6 +1,8 @@
 export const COLORS = {
   background: "#F7F8F6",
   surface: "#FFFFFF",
+  drawerSurface: "rgba(255, 255, 255, 0.96)",
+  drawerHeader: "rgba(23, 107, 93, 0.94)",
   surfaceMuted: "#F0F2EF",
   ink: "#1B1D1B",
   inkMuted: "#686D68",

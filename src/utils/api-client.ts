@@ -35,6 +35,14 @@ interface MultipartFileLog {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
+export const getApiErrorMessage = (body: unknown, fallbackMessage: string): string =>
+  isRecord(body) && typeof body.message === "string" && body.message.trim()
+    ? body.message
+    : fallbackMessage;
+
+export const isApiErrorResponse = (body: unknown): boolean =>
+  isRecord(body) && body.status === "error";
+
 const isReactNativeFormDataReader = (
   value: unknown,
 ): value is ReactNativeFormDataReader =>
