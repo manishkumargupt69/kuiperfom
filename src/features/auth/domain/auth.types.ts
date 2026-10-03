@@ -14,6 +14,7 @@ export interface AuthCompany {
 
 export interface AuthenticatedUser {
   id: string;
+  clientId?: number;
   employeeCode: string | null;
   displayName: string;
   name: string;
@@ -71,6 +72,7 @@ export interface LoginRoleComponentDto {
 
 export interface LoginUserDataDto {
   id: string;
+  clientId: number;
   employee: {
     employeeCode: string;
   } | null;

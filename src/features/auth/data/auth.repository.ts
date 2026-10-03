@@ -10,7 +10,7 @@ import type {
   SetMpinInput,
 } from "@/src/features/auth/domain/auth.types";
 import { createAuthenticatedHeaders } from "@/src/features/auth/data/authenticated-headers";
-import { executeJsonRequest } from "@/src/utils/api-client";
+import { executeJsonRequest, getApiErrorMessage, isApiErrorResponse } from "@/src/utils/api-client";
 
 const API_BASE_URL = "http://34.100.253.156/fom-api";
 
@@ -73,6 +73,7 @@ const isLoginResponseDto = (value: unknown): value is LoginResponseDto => {
     typeof value.message === "string" &&
     typeof data.token === "string" &&
     typeof userData.id === "string" &&
+    typeof userData.clientId === "number" &&
     hasValidEmployee &&
     typeof userData.name === "string" &&
     typeof userData.email === "string" &&
@@ -89,11 +90,6 @@ const isLoginResponseDto = (value: unknown): value is LoginResponseDto => {
     defaultRole.roleComponent.every(isLoginRoleComponentDto)
   );
 };
-
-const getApiErrorMessage = (value: unknown, fallbackMessage: string): string =>
-  isRecord(value) && typeof value.message === "string"
-    ? value.message
-    : fallbackMessage;
 
 const mapRoleComponent = (
   component: LoginRoleComponentDto,
@@ -120,6 +116,7 @@ const mapLoginResponseToSession = (response: LoginResponseDto): AuthSession => {
     roleComponents: userData.defaultRole.roleComponent.map(mapRoleComponent),
     user: {
       id: userData.id,
+      clientId: userData.clientId,
       employeeCode: userData.employee?.employeeCode ?? null,
       displayName: userData.name,
       name: userData.name,
@@ -156,7 +153,7 @@ export class AuthRepository {
       body: requestBody,
     });
 
-    if (!response.ok) {
+    if (!response.ok || isApiErrorResponse(responseBody)) {
       throw new Error(
         getApiErrorMessage(responseBody, "Sign-in could not be completed."),
       );
@@ -182,7 +179,7 @@ export class AuthRepository {
       },
       body: input,
     });
-    if (response.ok) {
+    if (response.ok && !isApiErrorResponse(responseBody)) {
       return;
     }
 
@@ -201,7 +198,7 @@ export class AuthRepository {
       },
       body: input,
     });
-    if (response.ok) {
+    if (response.ok && !isApiErrorResponse(responseBody)) {
       return;
     }
 
@@ -221,7 +218,7 @@ export class AuthRepository {
       },
       body: input,
     });
-    if (response.ok) {
+    if (response.ok && !isApiErrorResponse(responseBody)) {
       return;
     }
 

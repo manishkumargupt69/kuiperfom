@@ -52,6 +52,9 @@ const getValidationErrors = (
 const hasErrors = (errors: ChangePasswordErrors): boolean =>
   Object.values(errors).some(Boolean);
 
+const getErrorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : "Password could not be changed.";
+
 export const useChangePassword = (
   session: AuthSession | null,
 ): ChangePasswordResult => {
@@ -100,8 +103,8 @@ export const useChangePassword = (
       });
       close();
       showSuccessMessage("Password changed successfully.");
-    } catch {
-      setNotice("Password could not be changed. Check your current password.");
+    } catch (error: unknown) {
+      setNotice(getErrorMessage(error));
     } finally {
       setIsSubmitting(false);
     }

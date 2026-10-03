@@ -53,6 +53,7 @@ const isAuthSession = (value: unknown): value is AuthSession => {
     Array.isArray(value.roleComponents) &&
     value.roleComponents.every(isAuthRoleComponent) &&
     typeof value.user.id === "string" &&
+    (value.user.clientId === undefined || typeof value.user.clientId === "number") &&
     isNullableString(value.user.employeeCode) &&
     typeof value.user.displayName === "string" &&
     typeof value.user.name === "string" &&

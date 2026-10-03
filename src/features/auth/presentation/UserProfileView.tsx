@@ -13,7 +13,6 @@ import ProfileDetailRow from "@/src/features/auth/presentation/ProfileDetailRow"
 import {
   COLORS,
   CONTROL_HEIGHT,
-  FLOATING_TAB_BAR_CONTENT_CLEARANCE,
   MINIMUM_TOUCH_SIZE,
   RADII,
   SCREEN_HORIZONTAL_PADDING,
@@ -167,7 +166,7 @@ export default memo(UserProfileView);
 const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
-    paddingBottom: FLOATING_TAB_BAR_CONTENT_CLEARANCE + SPACING.large,
+    paddingBottom: SPACING.large,
     paddingHorizontal: SCREEN_HORIZONTAL_PADDING,
     paddingTop: SPACING.large,
   },

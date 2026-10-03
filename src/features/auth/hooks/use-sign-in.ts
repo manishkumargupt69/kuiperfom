@@ -171,9 +171,9 @@ export const useSignIn = () => {
       } else {
         signInForCurrentRun(session);
       }
-      router.replace("/(app)/home");
-    } catch {
-      setNotice("Sign-in could not be completed. Check your details and retry.");
+      router.replace("/(app)/(tabs)/dashboard");
+    } catch (error: unknown) {
+      setNotice(error instanceof Error ? error.message : "Sign-in could not be completed. Check your details and retry.");
     } finally {
       setIsSubmitting(false);
     }
