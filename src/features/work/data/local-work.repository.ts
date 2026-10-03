@@ -1,7 +1,10 @@
 import { createAuthenticatedHeaders } from "@/src/features/auth/data/authenticated-headers";
 import type { AuthSession } from "@/src/features/auth/domain/auth.types";
+import { getSupportedUploadFile } from "@/src/features/evidence/domain/evidence-upload-policy";
 import type {
   WorkItemViewModel,
+  WorkHistoryViewModel,
+  WorkAuditInput,
   WorkTransitionKey,
   WorkUpdateInput,
 } from "@/src/features/work/domain/work.types";
@@ -13,6 +16,8 @@ import type { StatusTone } from "@/src/types/status";
 import {
   executeJsonRequest,
   executeMultipartRequest,
+  getApiErrorMessage,
+  isApiErrorResponse,
 } from "@/src/utils/api-client";
 import { appendFormDataFile } from "@/src/utils/append-form-data-file";
 
@@ -31,7 +36,7 @@ const WORK_REQUEST_SEARCH_BODY = {
     workGroup: { select: { itemWorkGroupName: true } },
     workSubGroup: { select: { itemWorkSubGroupName: true } },
     workItem: { select: { nameCode: true } },
-    assignedUsers: { include: { assignedToUser: { select: { nameCode: true } } } },
+    assignedUsers: { include: { assignedToUser: { select: { id: true, nameCode: true } } } },
   },
 } as const;
 const WORK_DETAILS_INCLUDE = {
@@ -43,18 +48,20 @@ const WORK_DETAILS_INCLUDE = {
 const STATUS_PRESENTATION: Readonly<
   Record<string, { label: string; tone: StatusTone }>
 > = {
+  ASSIGNED: { label: "Assigned", tone: "info" },
   COMPLETED: { label: "Completed", tone: "success" },
   HOLD: { label: "On Hold", tone: "warning" },
   PENDING: { label: "Pending", tone: "warning" },
   STARTED: { label: "Started", tone: "info" },
+  RESUME: { label: "Started", tone: "info" },
 };
 
 interface WorkGroupDto {
-  name: string;
+  name: string | null;
 }
 
 interface WorkSubGroupDto {
-  name: string;
+  name: string | null;
 }
 
 interface WorkItemDto {
@@ -68,9 +75,28 @@ interface WorkHistoryDto {
   status: string;
   actionAt: string;
 }
+interface WorkHistoryEntryDto {
+  id: string;
+  actionType: string;
+  status: string;
+  progressPercent: number;
+  remarks: string;
+  mediaUrls: string[];
+  voiceNoteUrl: string | null;
+  actionAt: string;
+  actionByName: string;
+  auditRemarks?: string | null;
+  auditMediaUrls?: string[] | null;
+  auditStatus?: string | null;
+  auditedAt?: string | null;
+}
+interface WorkHistoryResponseDto {
+  status: string;
+  data: WorkHistoryEntryDto[];
+}
 interface WorkRequestProjectDto { projectName: string; }
-interface WorkRequestListWorkGroupDto { itemWorkGroupName: string; }
-interface WorkRequestListWorkSubGroupDto { itemWorkSubGroupName: string; }
+interface WorkRequestListWorkGroupDto { itemWorkGroupName: string | null; }
+interface WorkRequestListWorkSubGroupDto { itemWorkSubGroupName: string | null; }
 interface WorkRequestListWorkItemDto { nameCode: string; }
 interface WorkRequestAssignedUserDto { assignedToUser: { nameCode: string }; }
 interface WorkRequestListItemDto {
@@ -151,10 +177,14 @@ const isNullableNumber = (value: unknown): value is number | null =>
 const isNullableStringArray = (value: unknown): value is string[] | null =>
   value === null ||
   Array.isArray(value) && value.every((item) => typeof item === "string");
+const isOptionalNullableString = (value: unknown): boolean =>
+  value === undefined || isNullableString(value);
+const isOptionalNullableStringArray = (value: unknown): boolean =>
+  value === undefined || isNullableStringArray(value);
 const isWorkGroupDto = (value: unknown): value is WorkGroupDto =>
-  isRecord(value) && typeof value.name === "string";
+  isRecord(value) && isNullableString(value.name);
 const isWorkSubGroupDto = (value: unknown): value is WorkSubGroupDto =>
-  isRecord(value) && typeof value.name === "string";
+  isRecord(value) && isNullableString(value.name);
 const isWorkItemDto = (value: unknown): value is WorkItemDto =>
   isRecord(value) &&
   typeof value.itemCode === "string" &&
@@ -165,12 +195,32 @@ const isWorkHistoryDto = (value: unknown): value is WorkHistoryDto =>
   isRecord(value) &&
   typeof value.status === "string" &&
   typeof value.actionAt === "string";
+const isWorkHistoryEntryDto = (value: unknown): value is WorkHistoryEntryDto =>
+  isRecord(value) &&
+  typeof value.id === "string" &&
+  typeof value.actionType === "string" &&
+  typeof value.status === "string" &&
+  typeof value.progressPercent === "number" &&
+  typeof value.remarks === "string" &&
+  Array.isArray(value.mediaUrls) && value.mediaUrls.every((url) => typeof url === "string") &&
+  isNullableString(value.voiceNoteUrl) &&
+  typeof value.actionAt === "string" &&
+  typeof value.actionByName === "string" &&
+  isOptionalNullableString(value.auditRemarks) &&
+  isOptionalNullableStringArray(value.auditMediaUrls) &&
+  isOptionalNullableString(value.auditStatus) &&
+  isOptionalNullableString(value.auditedAt);
+const isWorkHistoryResponseDto = (value: unknown): value is WorkHistoryResponseDto =>
+  isRecord(value) &&
+  typeof value.status === "string" &&
+  Array.isArray(value.data) &&
+  value.data.every(isWorkHistoryEntryDto);
 const isWorkRequestProjectDto = (value: unknown): value is WorkRequestProjectDto =>
   isRecord(value) && typeof value.projectName === "string";
 const isWorkRequestListWorkGroupDto = (value: unknown): value is WorkRequestListWorkGroupDto =>
-  isRecord(value) && typeof value.itemWorkGroupName === "string";
+  isRecord(value) && isNullableString(value.itemWorkGroupName);
 const isWorkRequestListWorkSubGroupDto = (value: unknown): value is WorkRequestListWorkSubGroupDto =>
-  isRecord(value) && typeof value.itemWorkSubGroupName === "string";
+  isRecord(value) && isNullableString(value.itemWorkSubGroupName);
 const isWorkRequestListWorkItemDto = (value: unknown): value is WorkRequestListWorkItemDto =>
   isRecord(value) && typeof value.nameCode === "string";
 const isWorkRequestAssignedUserDto = (value: unknown): value is WorkRequestAssignedUserDto =>
@@ -257,8 +307,8 @@ const createJsonHeaders = (session: AuthSession): Record<string, string> => ({
 const getAvailableTransitions = (
   status: string,
 ): readonly WorkTransitionKey[] => {
-  if (status === "PENDING") return ["start"];
-  if (status === "STARTED") return ["hold", "complete"];
+  if (status === "PENDING" || status === "ASSIGNED") return ["start"];
+  if (status === "STARTED" || status === "RESUME") return ["hold", "complete"];
   if (status === "HOLD") return ["start", "complete"];
   return [];
 };
@@ -308,6 +358,24 @@ const mapAttachments = (
   ...(voiceNoteUrl ? [mapRemoteAttachment(voiceNoteUrl, "audio")] : []),
 ];
 
+const mapWorkHistoryEntryDto = (entry: WorkHistoryEntryDto): WorkHistoryViewModel => ({
+  id: entry.id,
+  action: entry.actionType,
+  status: entry.status,
+  progressPercent: entry.progressPercent,
+  remarks: entry.remarks,
+  actionAt: entry.actionAt,
+  actionByName: entry.actionByName,
+  attachments: mapAttachments(entry.mediaUrls, entry.voiceNoteUrl),
+  audit: entry.auditStatus === "AUDITED" || entry.auditedAt
+    ? {
+        remarks: entry.auditRemarks ?? "",
+        auditedAt: entry.auditedAt ?? "",
+        attachments: mapAttachments(entry.auditMediaUrls ?? [], null),
+      }
+    : null,
+});
+
 const getWeightLabel = (): string | null => null;
 
 const getUserName = (
@@ -324,8 +392,8 @@ const mapWorkRequestListDto = ({
 }): WorkItemViewModel => ({
   id: item.id,
   requestNumber: item.requestNumber,
-  workGroup: item.workGroup.itemWorkGroupName,
-  workSubgroup: item.workSubGroup.itemWorkSubGroupName,
+  workGroup: item.workGroup.itemWorkGroupName ?? "Unknown Group",
+  workSubgroup: item.workSubGroup.itemWorkSubGroupName ?? "Unknown Subgroup",
   workItem: item.workItem.nameCode,
   workItemCode: item.workItem.nameCode,
   workItemDescription: null,
@@ -358,8 +426,8 @@ const mapWorkRequestDto = ({
 }: WorkMappingOptions): WorkItemViewModel => ({
   id: item.id,
   requestNumber: item.requestNumber,
-  workGroup: item.workGroup.name,
-  workSubgroup: item.workSubGroup.name,
+  workGroup: item.workGroup.name ?? "Unknown Group",
+  workSubgroup: item.workSubGroup.name ?? "Unknown Subgroup",
   workItem: item.workItem.itemName,
   workItemCode: item.workItem.itemCode,
   workItemDescription: item.workItem.description,
@@ -448,13 +516,15 @@ const appendLocalAttachments = (
   attachments
     .filter((attachment) => attachment.uri.startsWith("file:"))
     .forEach((attachment) => {
+      const uploadFile = getSupportedUploadFile(attachment);
+      if (!uploadFile) throw new Error("Only image, PDF, Word, and Excel files are allowed.");
       appendFormDataFile({
         formData,
         fieldName: "files",
         file: {
           uri: attachment.uri,
-          name: attachment.name,
-          type: attachment.mimeType,
+          name: uploadFile.name,
+          type: uploadFile.mimeType,
           sizeBytes: attachment.sizeBytes,
         },
       });
@@ -468,6 +538,38 @@ const createActionFormData = (input: WorkUpdateInput): FormData => {
     formData.append("progressPercent", input.completionPercentage.trim());
   }
   appendLocalAttachments(formData, input.attachments);
+  return formData;
+};
+
+const createAuditFormData = (input: WorkAuditInput): FormData => {
+  const formData = new FormData();
+  formData.append("data", JSON.stringify({ remarks: input.remarks.trim() }));
+  input.attachments.forEach((attachment) => {
+    const uploadFile = getSupportedUploadFile(attachment);
+    if (!uploadFile || !attachment.uri.startsWith("file:")) {
+      throw new Error("Only image, PDF, Word, and Excel files are allowed.");
+    }
+    appendFormDataFile({
+      formData,
+      fieldName: "files",
+      file: {
+        uri: attachment.uri,
+        name: `${attachment.id}_${uploadFile.name}`,
+        type: uploadFile.mimeType,
+        sizeBytes: attachment.sizeBytes,
+      },
+    });
+    formData.append("filesMeta", JSON.stringify({
+      uniqueId: attachment.id,
+      id: attachment.id,
+      name: uploadFile.name,
+      size: attachment.sizeBytes,
+      type: uploadFile.mimeType,
+      lastModified: attachment.capturedAt ? Date.parse(attachment.capturedAt) : Date.now(),
+      documentType: "WorkRequest",
+      description: input.remarks.trim(),
+    }));
+  });
   return formData;
 };
 
@@ -485,6 +587,37 @@ const getActionPath = ({
 };
 
 export class LocalWorkRepository {
+  async auditWorkItem(session: AuthSession, input: WorkAuditInput): Promise<void> {
+    const request = {
+      url: `${API_BASE_URL}/work-request/audit/${input.id}`,
+      method: "PUT" as const,
+      headers: createAuthenticatedHeaders(session),
+    };
+    const { response, body } = input.attachments.length > 0
+      ? await executeMultipartRequest({ ...request, body: createAuditFormData(input) })
+      : await executeJsonRequest({
+          ...request,
+          headers: createJsonHeaders(session),
+          body: { remarks: input.remarks.trim() },
+        });
+    if (!response.ok || !isRecord(body) || body.status !== "success") {
+      throw new Error(getApiErrorMessage(body, "The work audit could not be saved."));
+    }
+  }
+
+  async getWorkHistory(session: AuthSession, id: string): Promise<readonly WorkHistoryViewModel[]> {
+    const { response, body } = await executeJsonRequest({
+      url: `${API_BASE_URL}/work-request/history/${id}`,
+      method: "POST",
+      headers: createJsonHeaders(session),
+    });
+    if (!response.ok || !isWorkHistoryResponseDto(body) || body.status !== "success") {
+      throw new Error("Work history could not be loaded.");
+    }
+    return body.data.map(mapWorkHistoryEntryDto)
+      .sort((first, second) => (second.audit?.auditedAt || second.actionAt).localeCompare(first.audit?.auditedAt || first.actionAt));
+  }
+
   async getAssignedWork(
     session: AuthSession,
     page: number = 1,
@@ -526,14 +659,14 @@ export class LocalWorkRepository {
       transition: input.transition,
       currentItem,
     });
-    const { response } = await executeMultipartRequest({
+    const { response, body } = await executeMultipartRequest({
       url: `${API_BASE_URL}/work-request/${actionPath}/${input.id}`,
       method: "PUT",
       headers: createAuthenticatedHeaders(session),
       body: createActionFormData(input),
     });
-    if (!response.ok) {
-      throw new Error("The work action could not be saved.");
+    if (!response.ok || isApiErrorResponse(body)) {
+      throw new Error(getApiErrorMessage(body, "The work action could not be saved."));
     }
 
     const updatedItem = await this.getWorkItem(session, input.id);

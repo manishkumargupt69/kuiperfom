@@ -38,3 +38,27 @@ export interface WorkUpdateInput {
   transition: WorkTransitionKey | null;
   attachments: readonly EvidenceAttachment[];
 }
+
+export interface WorkAuditInput {
+  id: string;
+  remarks: string;
+  attachments: readonly EvidenceAttachment[];
+}
+
+export interface WorkHistoryAuditViewModel {
+  remarks: string;
+  auditedAt: string;
+  attachments: readonly EvidenceAttachment[];
+}
+
+export interface WorkHistoryViewModel {
+  id: string;
+  action: string;
+  status: string;
+  progressPercent: number;
+  remarks: string;
+  actionAt: string;
+  actionByName: string;
+  attachments: readonly EvidenceAttachment[];
+  audit: WorkHistoryAuditViewModel | null;
+}

@@ -2,43 +2,28 @@ import type { ReactElement } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
-import { Feather } from "@expo/vector-icons";
 
-import AppHeader from "@/src/components/ui/AppHeader";
+import DetailHeader from "@/src/components/ui/DetailHeader";
 import AsyncStateView from "@/src/components/ui/AsyncStateView";
+import SearchField from "@/src/components/ui/SearchField";
 import ScreenContainer from "@/src/components/ui/ScreenContainer";
-import type {
-  DashboardWorkItemViewModel,
-  ProjectDetailsViewModel,
-  WorkGroupViewModel,
-} from "@/src/features/dashboard/domain/dashboard.types";
+import type { DashboardWorkItemViewModel } from "@/src/features/dashboard/domain/dashboard.types";
 import { useProjectDetails } from "@/src/features/dashboard/hooks/use-project-details";
 import ProjectWorkItemRow from "@/src/features/dashboard/presentation/ProjectWorkItemRow";
-import WorkGroupCard from "@/src/features/dashboard/presentation/WorkGroupCard";
+import ProjectSummaryRow from "@/src/features/dashboard/presentation/ProjectSummaryRow";
 import { useDashboardStore } from "@/src/features/dashboard/state/dashboard-store";
-import { COLORS, RADII, SCREEN_HORIZONTAL_PADDING, SPACING, TYPOGRAPHY } from "@/src/theme/tokens";
-import { formatDate } from "@/src/utils/format-date-time";
+import { COLORS, SCREEN_HORIZONTAL_PADDING, SPACING, TYPOGRAPHY } from "@/src/theme/tokens";
+import SecondaryButton from "@/src/components/ui/SecondaryButton";
 
-interface WorkGroupListItem {
-  kind: "work-group";
-  id: string;
-  workGroup: WorkGroupViewModel;
-}
-
-interface WorkItemListItem {
-  kind: "work-item";
-  id: string;
-  workItem: DashboardWorkItemViewModel;
-}
-
-type ProjectDetailsListItem = WorkGroupListItem | WorkItemListItem;
-
-const getItemKey = (item: ProjectDetailsListItem): string => item.id;
+const DAYS_AHEAD = 30;
+const getItemKey = (item: DashboardWorkItemViewModel): string => item.id;
+const getLocalDateKey = (date: Date): string =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
 export default function WorkGroupDetailsScreen(): ReactElement {
   const selectedProject = useDashboardStore((state) => state.selectedProject);
   const { viewState, reload } = useProjectDetails(selectedProject?.id ?? null);
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [searchText, setSearchText] = useState("");
 
   const handleBack = useCallback((): void => {
     router.back();
@@ -48,50 +33,27 @@ export default function WorkGroupDetailsScreen(): ReactElement {
     void reload();
   }, [reload]);
 
-  const toggleGroup = useCallback((groupId: string) => {
-    setExpandedGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(groupId)) next.delete(groupId);
-      else next.add(groupId);
-      return next;
-    });
+  const clearSearch = useCallback((): void => setSearchText(""), []);
+  const openAudit = useCallback((): void => router.push("/(app)/audit-work-items"), []);
+  const openWorkItem = useCallback((workItem: DashboardWorkItemViewModel): void => {
+    router.push({ pathname: "/(app)/work-assigned/[id]", params: { id: workItem.id } });
   }, []);
 
   const listItems = useMemo(() => {
     if (viewState.status !== "success") return [];
-    const project = viewState.data;
-    return project.workGroups.flatMap((workGroup) => {
-      const groupItem = { kind: "work-group" as const, id: `work-group-${workGroup.id}`, workGroup };
-      if (expandedGroups.has(workGroup.id)) {
-        const items = workGroup.workItems.map((workItem) => ({
-          kind: "work-item" as const,
-          id: `work-item-${workItem.id}`,
-          workItem,
-        }));
-        return [groupItem, ...items];
-      }
-      return [groupItem];
-    });
-  }, [viewState, expandedGroups]);
+    const latestDate = new Date();
+    latestDate.setDate(latestDate.getDate() + DAYS_AHEAD);
+    const latestDateKey = getLocalDateKey(latestDate);
+    const query = searchText.trim().toLocaleLowerCase();
+    return viewState.data.workGroups.flatMap((workGroup) => workGroup.workItems)
+      .filter((workItem) => workItem.targetCompletionDate && workItem.targetCompletionDate.slice(0, 10) <= latestDateKey)
+      .filter((workItem) => !query || [workItem.workItemName, workItem.workSubGroupName, workItem.targetCompletionDate ?? "", workItem.status]
+        .some((value) => value.toLocaleLowerCase().includes(query)));
+  }, [viewState, searchText]);
 
   const renderItem = useCallback(
-    ({ item }: { item: ProjectDetailsListItem }): ReactElement => {
-      if (item.kind === "work-group") {
-        return (
-          <WorkGroupCard
-            workGroup={item.workGroup}
-            expanded={expandedGroups.has(item.workGroup.id)}
-            onPress={() => toggleGroup(item.workGroup.id)}
-          />
-        );
-      }
-      return (
-        <ProjectWorkItemRow
-          workItem={item.workItem}
-        />
-      );
-    },
-    [expandedGroups, toggleGroup],
+    ({ item }: { item: DashboardWorkItemViewModel }): ReactElement => <ProjectWorkItemRow workItem={item} onPress={openWorkItem} />,
+    [openWorkItem],
   );
 
   const renderHeader = useCallback(
@@ -100,47 +62,21 @@ export default function WorkGroupDetailsScreen(): ReactElement {
       const project = viewState.data;
       return (
         <View style={styles.headerContainer}>
-          <View style={styles.projectCard}>
-            <View style={styles.projectCardHeader}>
-              <View style={styles.projectIconWrapper}>
-                <Feather name="briefcase" size={22} color={COLORS.accent} />
-              </View>
-              <View style={styles.projectTitleWrapper}>
-                <Text style={styles.projectSubtitle}>Project Details</Text>
-                <Text style={styles.projectTitle} numberOfLines={2}>{project.projectName}</Text>
-              </View>
-            </View>
-            <View style={styles.projectMetaContainer}>
-              <View style={styles.projectMetaItem}>
-                <Feather name="user" size={14} color={COLORS.inkMuted} style={styles.projectMetaIcon} />
-                <Text style={styles.projectMetaLabel}>Client</Text>
-                <Text style={styles.projectMetaValue} numberOfLines={1}>{project.clientName}</Text>
-              </View>
-              <View style={styles.projectMetaItem}>
-                <Feather name="map-pin" size={14} color={COLORS.inkMuted} style={styles.projectMetaIcon} />
-                <Text style={styles.projectMetaLabel}>City</Text>
-                <Text style={styles.projectMetaValue} numberOfLines={1}>{project.city}</Text>
-              </View>
-              <View style={styles.projectMetaItem}>
-                <Feather name="calendar" size={14} color={COLORS.inkMuted} style={styles.projectMetaIcon} />
-                <Text style={styles.projectMetaLabel}>Start Date</Text>
-                <Text style={styles.projectMetaValue} numberOfLines={1}>
-                  {formatDate(project.startDate)}
-                </Text>
-              </View>
-            </View>
-          </View>
-          <Text style={styles.sectionTitle}>Work groups</Text>
+          <ProjectSummaryRow city={project.city} projectName={project.projectName} startDate={project.startDate} />
+          <View style={styles.auditAction}><SecondaryButton iconName="check-square" label="Audit work items" onPress={openAudit} /></View>
+          <Text style={styles.sectionTitle}>Work items</Text>
+          <Text style={styles.listHint}>Planned through the next 30 days, including overdue items</Text>
+          <SearchField accessibilityLabel="Search work items" onChangeText={setSearchText} onClear={clearSearch} placeholder="Search work, subgroup, date, status" value={searchText} />
         </View>
       );
     },
-    [viewState],
+    [viewState, searchText, clearSearch, openAudit],
   );
 
   if (!selectedProject) {
     return (
       <ScreenContainer>
-        <AppHeader onBack={handleBack} title="Details" />
+        <DetailHeader onBack={handleBack} title="Work Status Update" />
         <View style={styles.state}>
           <AsyncStateView
             emptyMessage="No project selected."
@@ -155,7 +91,7 @@ export default function WorkGroupDetailsScreen(): ReactElement {
 
   return (
     <ScreenContainer>
-      <AppHeader onBack={handleBack} title="Work Groups" />
+      <DetailHeader onBack={handleBack} title="Work Status Update" />
       {viewState.status === "success" ? (
         <FlatList
           contentContainerStyle={styles.list}
@@ -163,12 +99,13 @@ export default function WorkGroupDetailsScreen(): ReactElement {
           keyExtractor={getItemKey}
           ListHeaderComponent={renderHeader}
           renderItem={renderItem}
+          ListEmptyComponent={<Text style={styles.empty}>No work items match this date range and search.</Text>}
           showsVerticalScrollIndicator={false}
         />
       ) : (
         <View style={styles.state}>
           <AsyncStateView
-            emptyMessage="No work groups are assigned to this project."
+            emptyMessage="No work items are assigned to this project."
             message={viewState.status === "error" ? viewState.message : undefined}
             onRetry={handleRetry}
             status={viewState.status}
@@ -200,76 +137,7 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.medium,
     paddingTop: SPACING.medium,
   },
-  projectCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADII.large,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: SPACING.large,
-    shadowColor: COLORS.ink,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
-    elevation: 2,
-    marginTop: SPACING.medium,
-  },
-  projectCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: SPACING.large,
-  },
-  projectIconWrapper: {
-    width: 48,
-    height: 48,
-    borderRadius: RADII.medium,
-    backgroundColor: COLORS.accentSoft,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: SPACING.medium,
-  },
-  projectTitleWrapper: {
-    flex: 1,
-  },
-  projectSubtitle: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.inkMuted,
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-    fontWeight: "700",
-    marginBottom: 4,
-  },
-  projectTitle: {
-    ...TYPOGRAPHY.sectionTitle,
-    color: COLORS.ink,
-    fontWeight: "800",
-    lineHeight: 28,
-  },
-  projectMetaContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: SPACING.medium,
-    backgroundColor: COLORS.background,
-    padding: SPACING.medium,
-    borderRadius: RADII.medium,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.border,
-  },
-  projectMetaItem: {
-    flex: 1,
-    minWidth: 80,
-  },
-  projectMetaIcon: {
-    marginBottom: 6,
-  },
-  projectMetaLabel: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.inkMuted,
-    fontWeight: "500",
-    marginBottom: 2,
-  },
-  projectMetaValue: {
-    ...TYPOGRAPHY.body,
-    color: COLORS.ink,
-    fontWeight: "700",
-  },
+  listHint: { color: COLORS.inkMuted, ...TYPOGRAPHY.caption, marginBottom: SPACING.medium },
+  empty: { color: COLORS.inkMuted, ...TYPOGRAPHY.body, paddingVertical: SPACING.extraLarge },
+  auditAction: { alignItems: "flex-start", marginTop: SPACING.medium },
 });
