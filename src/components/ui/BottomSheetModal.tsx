@@ -2,7 +2,6 @@ import type { PropsWithChildren, ReactElement } from "react";
 import {
   KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -53,7 +52,6 @@ export default function BottomSheetModal({
         />
         <KeyboardAvoidingView
           behavior="padding"
-          enabled={Platform.OS === "ios"}
           pointerEvents="box-none"
           style={styles.keyboardArea}
         >
