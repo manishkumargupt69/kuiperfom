@@ -5,5 +5,5 @@ import { useAuthStore } from "@/src/features/auth/state/auth-store";
 
 export default function IndexScreen(): ReactElement {
   const session = useAuthStore((state) => state.session);
-  return <Redirect href={session ? "/(app)/home" : "/(auth)/sign-in"} />;
+  return <Redirect href={session ? "/(app)/(tabs)/dashboard" : "/(auth)/sign-in"} />;
 }

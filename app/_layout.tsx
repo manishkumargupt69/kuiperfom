@@ -41,6 +41,7 @@ function RootNavigator(): ReactElement | null {
         screenOptions={{
           contentStyle: { backgroundColor: COLORS.background },
           headerShown: false,
+          animation: "fade_from_bottom",
         }}
       />
       <StatusBar style="dark" />
