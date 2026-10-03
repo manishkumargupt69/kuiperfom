@@ -1,9 +1,10 @@
 import type { ReactElement } from "react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Alert, ScrollView, StyleSheet, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 
-import AppHeader from "@/src/components/ui/AppHeader";
+import { useAppNavigation } from "@/src/components/navigation/AppNavigationContext";
+import DetailHeader from "@/src/components/ui/DetailHeader";
 import AsyncStateView from "@/src/components/ui/AsyncStateView";
 import PrimaryButton from "@/src/components/ui/PrimaryButton";
 import ScreenContainer from "@/src/components/ui/ScreenContainer";
@@ -13,6 +14,7 @@ import { useIncidentReport } from "@/src/features/incidents/hooks/use-incident-r
 import IncidentDetailView from "@/src/features/incidents/presentation/IncidentDetailView";
 import IncidentOptionPicker from "@/src/features/incidents/presentation/IncidentOptionPicker";
 import IncidentReportForm from "@/src/features/incidents/presentation/IncidentReportForm";
+import { useUnsavedChanges } from "@/src/hooks/use-unsaved-changes";
 import {
   COLORS,
   SCREEN_HORIZONTAL_PADDING,
@@ -32,14 +34,36 @@ export default function IncidentDetailScreen(): ReactElement {
   const { viewState, reload } = useIncidentDetail(id);
   const incident = viewState.status === "success" ? viewState.data : null;
   const editor = useIncidentReport(incident);
+  const { requestNavigation, setFloatingBarHidden } = useAppNavigation();
+  useEffect(() => {
+    setFloatingBarHidden(isEditing);
+    return () => setFloatingBarHidden(false);
+  }, [isEditing, setFloatingBarHidden]);
+  const isDirty = isEditing && Boolean(incident && editor.state.type) && (
+    editor.state.type?.id !== incident?.typeId
+    || editor.state.subtype?.id !== incident?.subtypeId
+    || editor.state.assignee?.id !== (incident?.assignedToId ?? undefined)
+    || editor.state.title !== incident?.title
+    || editor.state.description !== incident?.description
+    || editor.state.remarks !== (incident?.remarks ?? "")
+    || editor.attachments.length > 0
+  );
+  const allowNavigation = useUnsavedChanges(isDirty);
+  const requestEditClose = useCallback((): void => {
+    requestNavigation(() => setIsEditing(false));
+  }, [requestNavigation]);
 
   const handleBack = useCallback((): void => {
     if (isEditing) {
+      if (isDirty) {
+        requestEditClose();
+        return;
+      }
       setIsEditing(false);
       return;
     }
     router.back();
-  }, [isEditing]);
+  }, [isDirty, isEditing, requestEditClose]);
   const handleRetry = useCallback((): void => {
     void reload();
   }, [reload]);
@@ -60,12 +84,13 @@ export default function IncidentDetailScreen(): ReactElement {
   const handleSave = useCallback(async (): Promise<void> => {
     try {
       const incidentNumber = await editor.submit();
+      allowNavigation();
       showSuccessMessage(`${incidentNumber} updated`);
       setIsEditing(false);
     } catch (error: unknown) {
       Alert.alert("Unable to update incident", getSaveErrorMessage(error));
     }
-  }, [editor]);
+  }, [allowNavigation, editor]);
 
   const isDetailReady = viewState.status === "success";
   const isEditorReady = editor.typesState.status === "success";
@@ -74,7 +99,7 @@ export default function IncidentDetailScreen(): ReactElement {
 
   return (
     <ScreenContainer>
-      <AppHeader
+      <DetailHeader
         onBack={handleBack}
         title={isEditing ? "Edit Incident" : "Incident Details"}
       />
@@ -90,7 +115,6 @@ export default function IncidentDetailScreen(): ReactElement {
                 assigneeLabel={editor.state.assignee?.label ?? ""}
                 attachments={editor.attachments}
                 description={editor.state.description}
-                isRecording={editor.isRecording}
                 isSubtypeDisabled={
                   !editor.state.type ||
                   editor.isLoadingSubtypes ||
@@ -99,18 +123,13 @@ export default function IncidentDetailScreen(): ReactElement {
                 onAddDocument={editor.addDocument}
                 onAddFromGallery={editor.addFromGallery}
                 onAddPhoto={editor.addPhoto}
-                onAddVideo={editor.addVideo}
                 onAssigneePress={openAssigneePicker}
                 onDescriptionChange={editor.setDescription}
-                onRecordVoice={editor.toggleVoiceRecording}
                 onRemarksChange={editor.setRemarks}
                 onRemoveAttachment={editor.removeAttachment}
                 onSubtypePress={openSubtypePicker}
                 onTitleChange={editor.setTitle}
                 onTypePress={openTypePicker}
-                recordingDurationMilliseconds={
-                  editor.recordingDurationMilliseconds
-                }
                 remarks={editor.state.remarks}
                 subtypeLabel={editor.state.subtype?.label ?? ""}
                 title={editor.state.title}
@@ -153,7 +172,6 @@ export default function IncidentDetailScreen(): ReactElement {
       {isDetailReady && (!isEditing || isEditorReady) ? (
         <View style={styles.footer}>
           <PrimaryButton
-            isDisabled={isEditing && editor.isRecording}
             isLoading={isEditing && editor.isSubmitting}
             label={isEditing ? "Save Changes" : "Edit Incident"}
             onPress={isEditing ? handleSave : handleEdit}

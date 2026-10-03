@@ -88,8 +88,6 @@ interface IncidentReportResult {
   isLoadingSubtypes: boolean;
   isSubmitting: boolean;
   attachments: readonly EvidenceAttachment[];
-  isRecording: boolean;
-  recordingDurationMilliseconds: number;
   selectType: (value: IncidentOptionViewModel) => void;
   selectSubtype: (value: IncidentOptionViewModel) => void;
   selectAssignee: (value: IncidentOptionViewModel) => void;
@@ -99,8 +97,6 @@ interface IncidentReportResult {
   addDocument: () => Promise<void>;
   addFromGallery: () => Promise<void>;
   addPhoto: () => Promise<void>;
-  addVideo: () => Promise<void>;
-  toggleVoiceRecording: () => Promise<void>;
   removeAttachment: (id: string) => void;
   submit: () => Promise<string>;
   reloadTypes: () => Promise<void>;
@@ -252,8 +248,6 @@ export const useIncidentReport = (
     isLoadingSubtypes: subtypesQuery.isPending && Boolean(state.type),
     isSubmitting,
     attachments: evidence.attachments,
-    isRecording: evidence.isRecording,
-    recordingDurationMilliseconds: evidence.recordingDurationMilliseconds,
     selectType,
     selectSubtype,
     selectAssignee,
@@ -263,8 +257,6 @@ export const useIncidentReport = (
     addDocument: evidence.addDocument,
     addFromGallery: evidence.addFromGallery,
     addPhoto: evidence.addPhoto,
-    addVideo: evidence.addVideo,
-    toggleVoiceRecording: evidence.toggleVoiceRecording,
     removeAttachment: evidence.removeAttachment,
     submit,
     reloadTypes,

@@ -8,6 +8,7 @@ export interface EvidenceAttachment {
   mimeType: string;
   sizeBytes?: number;
   durationMilliseconds?: number;
+  capturedAt?: string;
 }
 
 const EVIDENCE_KINDS: readonly EvidenceKind[] = [
@@ -25,6 +26,8 @@ const isEvidenceKind = (value: unknown): value is EvidenceKind =>
 
 const isOptionalNumber = (value: unknown): boolean =>
   value === undefined || typeof value === "number";
+const isOptionalString = (value: unknown): boolean =>
+  value === undefined || typeof value === "string";
 
 export const isEvidenceAttachment = (
   value: unknown,
@@ -36,4 +39,5 @@ export const isEvidenceAttachment = (
   typeof value.uri === "string" &&
   typeof value.mimeType === "string" &&
   isOptionalNumber(value.sizeBytes) &&
-  isOptionalNumber(value.durationMilliseconds);
+  isOptionalNumber(value.durationMilliseconds) &&
+  isOptionalString(value.capturedAt);

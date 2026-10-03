@@ -1,10 +1,8 @@
 import { memo } from "react";
 import type { ReactElement } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import Feather from "@expo/vector-icons/Feather";
 
-import FormField from "@/src/components/ui/FormField";
-import MediaAttachmentTray from "@/src/components/ui/MediaAttachmentTray";
 import SelectField from "@/src/components/ui/SelectField";
 import type { EvidenceAttachment } from "@/src/types/evidence";
 import { COLORS, RADII, SPACING, TYPOGRAPHY } from "@/src/theme/tokens";
@@ -17,21 +15,14 @@ interface IncidentReportFormProps {
   assigneeLabel: string;
   remarks: string;
   isSubtypeDisabled: boolean;
-  attachments: readonly EvidenceAttachment[];
-  isRecording: boolean;
-  recordingDurationMilliseconds: number;
+  evidenceCount: number;
   onTypePress: () => void;
   onSubtypePress: () => void;
-  onTitleChange: (value: string) => void;
-  onDescriptionChange: (value: string) => void;
+  onTitlePress: () => void;
+  onDescriptionPress: () => void;
   onAssigneePress: () => void;
-  onRemarksChange: (value: string) => void;
-  onAddDocument: () => void;
-  onAddFromGallery: () => void;
-  onAddPhoto: () => void;
-  onAddVideo: () => void;
-  onRecordVoice: () => void;
-  onRemoveAttachment: (id: string) => void;
+  onRemarksPress: () => void;
+  onEvidencePress: () => void;
 }
 
 function IncidentReportForm({
@@ -42,21 +33,14 @@ function IncidentReportForm({
   assigneeLabel,
   remarks,
   isSubtypeDisabled,
-  attachments,
-  isRecording,
-  recordingDurationMilliseconds,
+  evidenceCount,
   onTypePress,
   onSubtypePress,
-  onTitleChange,
-  onDescriptionChange,
+  onTitlePress,
+  onDescriptionPress,
   onAssigneePress,
-  onRemarksChange,
-  onAddDocument,
-  onAddFromGallery,
-  onAddPhoto,
-  onAddVideo,
-  onRecordVoice,
-  onRemoveAttachment,
+  onRemarksPress,
+  onEvidencePress,
 }: IncidentReportFormProps): ReactElement {
   return (
     <View style={styles.container}>
@@ -67,13 +51,34 @@ function IncidentReportForm({
       </View>
       <View style={styles.card}>
         <View style={styles.sectionHeader}><Feather color={COLORS.accent} name="edit-3" size={18} /><Text style={styles.sectionTitle}>Incident details</Text></View>
-        <FormField label="Incident title" onChangeText={onTitleChange} placeholder="Enter incident title" textCapitalization="sentences" value={title} />
-        <FormField isMultiline label="Description" onChangeText={onDescriptionChange} placeholder="Describe the incident" textCapitalization="sentences" value={description} />
         <SelectField label="Assigned to" onPress={onAssigneePress} placeholder="Select assignee" value={assigneeLabel} />
-        <FormField isMultiline label="Remarks" onChangeText={onRemarksChange} placeholder="Enter remarks" textCapitalization="sentences" value={remarks} />
-      </View>
-      <View style={styles.card}>
-        <MediaAttachmentTray attachments={attachments} isRecording={isRecording} onAddDocument={onAddDocument} onAddFromGallery={onAddFromGallery} onAddPhoto={onAddPhoto} onAddVideo={onAddVideo} onRecordVoice={onRecordVoice} onRemove={onRemoveAttachment} recordingDurationMilliseconds={recordingDurationMilliseconds} />
+        <Pressable accessibilityLabel="Edit title" accessibilityRole="button" onPress={onTitlePress} style={({ pressed }) => [styles.detailButton, pressed && styles.pressed]}>
+          <View style={styles.detailCopy}>
+            <Text style={styles.label}>Title</Text>
+            <Text numberOfLines={1} style={styles.detailValue}>{title.trim() || "—"}</Text>
+          </View>
+          <Feather color={COLORS.accent} name="edit-2" size={18} />
+        </Pressable>
+        <Pressable accessibilityLabel="Edit description" accessibilityRole="button" onPress={onDescriptionPress} style={({ pressed }) => [styles.detailButton, pressed && styles.pressed]}>
+          <View style={styles.detailCopy}>
+            <Text style={styles.label}>Description</Text>
+            <Text numberOfLines={1} style={styles.detailValue}>{description.trim() || "—"}</Text>
+          </View>
+          <Feather color={COLORS.accent} name="edit-2" size={18} />
+        </Pressable>
+        <Pressable accessibilityLabel="Edit remarks" accessibilityRole="button" onPress={onRemarksPress} style={({ pressed }) => [styles.detailButton, pressed && styles.pressed]}>
+          <View style={styles.detailCopy}>
+            <Text style={styles.label}>Remarks</Text>
+            <Text numberOfLines={1} style={styles.detailValue}>{remarks.trim() || "—"}</Text>
+          </View>
+          <Feather color={COLORS.accent} name="edit-2" size={18} />
+        </Pressable>
+        <Pressable accessibilityLabel={`Open evidence, ${evidenceCount} attachments`} accessibilityRole="button" onPress={onEvidencePress} style={({ pressed }) => [styles.evidenceButton, pressed && styles.pressed]}>
+          <Feather color={COLORS.accent} name="paperclip" size={18} />
+          <Text style={styles.evidenceLabel}>Evidence</Text>
+          <Text style={styles.evidenceCount}>{evidenceCount}</Text>
+          <Feather color={COLORS.inkMuted} name="chevron-right" size={18} />
+        </Pressable>
       </View>
     </View>
   );
@@ -86,4 +91,12 @@ const styles = StyleSheet.create({
   card: { backgroundColor: COLORS.surface, borderColor: COLORS.border, borderRadius: RADII.large, borderWidth: 1, gap: SPACING.large, padding: SPACING.large },
   sectionHeader: { alignItems: "center", flexDirection: "row", gap: SPACING.small },
   sectionTitle: { color: COLORS.ink, ...TYPOGRAPHY.control, fontWeight: "800" },
+  label: { color: COLORS.ink, ...TYPOGRAPHY.body, fontWeight: "700" },
+  detailButton: { alignItems: "center", borderColor: COLORS.border, borderRadius: RADII.medium, borderWidth: 1, flexDirection: "row", minHeight: 58, paddingHorizontal: SPACING.medium },
+  detailCopy: { flex: 1, gap: SPACING.extraSmall },
+  detailValue: { color: COLORS.inkMuted, ...TYPOGRAPHY.caption },
+  evidenceButton: { alignItems: "center", borderColor: COLORS.border, borderRadius: RADII.medium, borderWidth: 1, flexDirection: "row", gap: SPACING.small, minHeight: 52, paddingHorizontal: SPACING.medium },
+  evidenceLabel: { color: COLORS.ink, ...TYPOGRAPHY.body, flex: 1, fontWeight: "700" },
+  evidenceCount: { color: COLORS.accent, ...TYPOGRAPHY.caption, fontWeight: "800" },
+  pressed: { backgroundColor: COLORS.accentSoft },
 });

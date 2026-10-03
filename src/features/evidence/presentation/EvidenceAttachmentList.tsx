@@ -11,6 +11,7 @@ import { COLORS, SPACING, TYPOGRAPHY } from "@/src/theme/tokens";
 interface EvidenceAttachmentListProps {
   attachments: readonly EvidenceAttachment[];
   onRemove?: (id: string) => void;
+  showLocationUnavailable?: boolean;
 }
 
 const getAttachmentKey = (attachment: EvidenceAttachment): string => attachment.id;
@@ -18,6 +19,7 @@ const getAttachmentKey = (attachment: EvidenceAttachment): string => attachment.
 export default function EvidenceAttachmentList({
   attachments,
   onRemove,
+  showLocationUnavailable = false,
 }: EvidenceAttachmentListProps): ReactElement {
   const [selectedAttachment, setSelectedAttachment] =
     useState<EvidenceAttachment | null>(null);
@@ -31,9 +33,10 @@ export default function EvidenceAttachmentList({
         attachment={item}
         onOpen={openAttachment}
         onRemove={onRemove}
+        showLocationUnavailable={showLocationUnavailable}
       />
     ),
-    [onRemove, openAttachment],
+    [onRemove, openAttachment, showLocationUnavailable],
   );
 
   if (attachments.length === 0) {

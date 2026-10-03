@@ -1,5 +1,6 @@
 import { createAuthenticatedHeaders } from "@/src/features/auth/data/authenticated-headers";
 import type { AuthSession } from "@/src/features/auth/domain/auth.types";
+import { getSupportedUploadFile } from "@/src/features/evidence/domain/evidence-upload-policy";
 import type {
   IncidentCreateInput,
   IncidentOptionViewModel,
@@ -13,6 +14,8 @@ import type { StatusTone } from "@/src/types/status";
 import {
   executeJsonRequest,
   executeMultipartRequest,
+  getApiErrorMessage,
+  isApiErrorResponse,
 } from "@/src/utils/api-client";
 import { appendFormDataFile } from "@/src/utils/append-form-data-file";
 
@@ -230,13 +233,15 @@ const appendLocalAttachments = (
   attachments
     .filter((attachment) => attachment.uri.startsWith("file:"))
     .forEach((attachment) => {
+      const uploadFile = getSupportedUploadFile(attachment);
+      if (!uploadFile) throw new Error("Only image, PDF, Word, and Excel files are allowed.");
       appendFormDataFile({
         formData,
         fieldName: "files",
         file: {
           uri: attachment.uri,
-          name: attachment.name,
-          type: attachment.mimeType,
+          name: uploadFile.name,
+          type: uploadFile.mimeType,
           sizeBytes: attachment.sizeBytes,
         },
       });
@@ -262,15 +267,19 @@ const getIncidentNumber = (value: unknown): string | null => {
 };
 
 const getMutationErrorMessage = ({
+  body,
   status,
   fallbackMessage,
 }: {
+  body: unknown;
   status: number;
   fallbackMessage: string;
-}): string =>
+}): string => getApiErrorMessage(
+  body,
   status === 413
     ? "The server upload limit is smaller than this attachment. Remove it or choose a smaller file."
-    : fallbackMessage;
+    : fallbackMessage,
+);
 
 export class IncidentRepository {
   async getReportedIncidents(
@@ -363,9 +372,10 @@ export class IncidentRepository {
       headers: createAuthenticatedHeaders(session),
       body: createIncidentFormData(input),
     });
-    if (!response.ok) {
+    if (!response.ok || isApiErrorResponse(body)) {
       throw new Error(
         getMutationErrorMessage({
+          body,
           status: response.status,
           fallbackMessage: "The incident could not be submitted.",
         }),
@@ -382,15 +392,16 @@ export class IncidentRepository {
     id: string,
     input: IncidentCreateInput,
   ): Promise<IncidentViewModel> {
-    const { response } = await executeMultipartRequest({
+    const { response, body } = await executeMultipartRequest({
       url: `${API_BASE_URL}/incident/update-incident/${id}`,
       method: "PUT",
       headers: createAuthenticatedHeaders(session),
       body: createIncidentFormData(input),
     });
-    if (!response.ok) {
+    if (!response.ok || isApiErrorResponse(body)) {
       throw new Error(
         getMutationErrorMessage({
+          body,
           status: response.status,
           fallbackMessage: "The incident could not be updated.",
         }),

@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import { ActivityIndicator, FlatList, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
 
-import AppHeader from "@/src/components/ui/AppHeader";
+import DetailHeader from "@/src/components/ui/DetailHeader";
 import AsyncStateView from "@/src/components/ui/AsyncStateView";
 import PrimaryButton from "@/src/components/ui/PrimaryButton";
 import ScreenContainer from "@/src/components/ui/ScreenContainer";
@@ -38,7 +38,7 @@ export default function IncidentsScreen(): ReactElement {
 
   return (
     <ScreenContainer>
-      <AppHeader onBack={handleBack} title="Incidents" />
+      <DetailHeader onBack={handleBack} title="Incidents" />
       <View style={styles.tools}><SearchField accessibilityLabel="Search incidents" onChangeText={setSearchText} onClear={clearSearch} placeholder="Search incidents" value={searchText} /></View>
       <View style={styles.body}>
         {viewState.status === "success" ? (

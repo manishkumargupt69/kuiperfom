@@ -123,6 +123,7 @@ export const createEvidenceAttachment = async ({
   return {
     id,
     kind,
+    capturedAt: new Date().toISOString(),
     name,
     uri: destination.uri,
     mimeType,

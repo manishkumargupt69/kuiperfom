@@ -24,6 +24,7 @@ interface EvidenceAttachmentRowProps {
   attachment: EvidenceAttachment;
   onOpen: (attachment: EvidenceAttachment) => void;
   onRemove?: (id: string) => void;
+  showLocationUnavailable: boolean;
 }
 
 const getPreviewStyle = ({
@@ -37,6 +38,7 @@ function EvidenceAttachmentRow({
   attachment,
   onOpen,
   onRemove,
+  showLocationUnavailable,
 }: EvidenceAttachmentRowProps): ReactElement {
   const handleOpen = (): void => onOpen(attachment);
   const handleRemove = (): void => onRemove?.(attachment.id);
@@ -77,6 +79,7 @@ function EvidenceAttachmentRow({
             {attachment.name}
           </Text>
           <Text style={styles.kind}>{attachment.kind}</Text>
+          {showLocationUnavailable && (attachment.kind === "photo" || attachment.kind === "video") ? <Text style={styles.location}>Location unavailable</Text> : null}
         </View>
       </Pressable>
       {onRemove ? (
@@ -143,6 +146,7 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.caption,
     textTransform: "capitalize",
   },
+  location: { color: COLORS.inkMuted, ...TYPOGRAPHY.caption },
   remove: {
     alignItems: "center",
     justifyContent: "center",
