@@ -21,7 +21,7 @@ export const useDashboard = (): DashboardResult => {
   const [page, setPage] = useState(1);
 
   const query = useQuery({
-    queryKey: [DASHBOARD_PROJECTS_QUERY_KEY],
+    queryKey: [DASHBOARD_PROJECTS_QUERY_KEY, session?.user.id],
     queryFn: () => {
       if (!session) return Promise.resolve([]);
       return dashboardRepository.getAssignedProjects(session);

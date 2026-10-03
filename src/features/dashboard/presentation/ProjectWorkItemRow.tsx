@@ -13,6 +13,7 @@ import type {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 
+import StatusBadge from "@/src/components/ui/StatusBadge";
 import type { DashboardWorkItemViewModel } from "@/src/features/dashboard/domain/dashboard.types";
 import { COLORS, RADII, SPACING, TYPOGRAPHY } from "@/src/theme/tokens";
 import { formatDateTime } from "@/src/utils/format-date-time";
@@ -20,6 +21,7 @@ import { formatDateTime } from "@/src/utils/format-date-time";
 interface ProjectWorkItemRowProps {
   workItem: DashboardWorkItemViewModel;
   onPress?: (workItem: DashboardWorkItemViewModel) => void;
+  accessibilityHint?: string;
 }
 
 const getRowStyle = ({
@@ -32,6 +34,7 @@ const getRowStyle = ({
 function ProjectWorkItemRow({
   workItem,
   onPress,
+  accessibilityHint,
 }: ProjectWorkItemRowProps): ReactElement {
   const handlePress = onPress ? (): void => onPress(workItem) : undefined;
   const assigneeNames = workItem.assignedUsers
@@ -40,8 +43,8 @@ function ProjectWorkItemRow({
 
   return (
     <Pressable
-      accessibilityHint={onPress ? "Opens work details" : undefined}
-      accessibilityLabel={`${workItem.workItemName}, code ${workItem.workItemCode}`}
+      accessibilityHint={onPress ? accessibilityHint ?? "Opens work details" : undefined}
+      accessibilityLabel={`${workItem.workItemName}${workItem.workItemCode ? `, code ${workItem.workItemCode}` : ""}`}
       accessibilityRole={onPress ? "button" : "none"}
       onPress={handlePress}
       style={onPress ? getRowStyle : styles.container}
@@ -56,21 +59,28 @@ function ProjectWorkItemRow({
           <Text style={styles.title}>{workItem.workItemName}</Text>
         </View>
       </View>
+      <View style={styles.progressRow}>
+        <StatusBadge label={workItem.status.replace(/_/g, " ")} tone={workItem.status === "COMPLETED" ? "success" : workItem.status === "PENDING" || workItem.status === "HOLD" ? "warning" : "info"} />
+        <Text style={styles.progress}>{workItem.progressPercent}% complete</Text>
+      </View>
+      {workItem.remarks ? <Text numberOfLines={2} style={styles.remarks}>{workItem.remarks}</Text> : null}
       
       <View style={styles.detailsGrid}>
-        <View style={styles.detailItem}>
-          <Feather name="hash" size={14} color={COLORS.inkMuted} style={styles.icon} />
-          <View>
-            <Text style={styles.detailLabel}>Item Code</Text>
-            <Text style={styles.detailValue}>{workItem.workItemCode}</Text>
+        {workItem.workItemCode ? (
+          <View style={styles.detailItem}>
+            <Feather name="hash" size={14} color={COLORS.inkMuted} style={styles.icon} />
+            <View>
+              <Text style={styles.detailLabel}>Item Code</Text>
+              <Text style={styles.detailValue}>{workItem.workItemCode}</Text>
+            </View>
           </View>
-        </View>
+        ) : null}
 
         <View style={styles.detailItem}>
           <Feather name="calendar" size={14} color={COLORS.inkMuted} style={styles.icon} />
           <View>
             <Text style={styles.detailLabel}>Target Completion Date</Text>
-            <Text style={styles.detailValue}>{formatDateTime(workItem.targetCompletionDate)}</Text>
+            <Text style={styles.detailValue}>{workItem.targetCompletionDate ? formatDateTime(workItem.targetCompletionDate) : "TBD"}</Text>
           </View>
         </View>
 
@@ -145,6 +155,9 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: COLORS.border,
   },
+  progressRow: { alignItems: "center", flexDirection: "row", gap: SPACING.small, justifyContent: "space-between", marginBottom: SPACING.medium },
+  progress: { color: COLORS.inkMuted, ...TYPOGRAPHY.caption, fontVariant: ["tabular-nums"] },
+  remarks: { color: COLORS.inkMuted, ...TYPOGRAPHY.body, marginBottom: SPACING.medium },
   detailItem: {
     flexDirection: "row",
     alignItems: "flex-start",

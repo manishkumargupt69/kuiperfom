@@ -27,12 +27,15 @@ function ProjectCard({ project, onPress }: ProjectCardProps): ReactElement {
       accessibilityHint="Opens project work groups"
       accessibilityLabel={`Project ${project.projectName}, Client ${project.clientName}`}
       accessibilityRole="button"
+      android_ripple={{ color: "rgba(0, 0, 0, 0.1)", borderless: false }}
       onPress={handlePress}
       style={getRowStyle}
     >
       <View style={styles.header}>
         <View style={styles.titleContainer}>
-          <Text style={styles.clientName}>{project.clientName}</Text>
+          <View style={styles.clientBadge}>
+            <Text style={styles.clientName}>{project.clientName}</Text>
+          </View>
           <Text style={styles.title} numberOfLines={1}>{project.projectName}</Text>
         </View>
         <View style={styles.chevronContainer}>
@@ -43,7 +46,7 @@ function ProjectCard({ project, onPress }: ProjectCardProps): ReactElement {
       <View style={styles.metaContainer}>
         <View style={styles.metaBadge}>
           <Feather name="layers" size={14} color={COLORS.accent} />
-          <Text style={styles.metaText}>{project.workGroupCount} Work Groups</Text>
+          <Text style={styles.metaText}>{project.workGroupCount} {project.workGroupCount === 1 ? "Work Group" : "Work Groups"}</Text>
         </View>
       </View>
     </Pressable>
@@ -83,12 +86,19 @@ const styles = StyleSheet.create({
     marginRight: SPACING.medium,
   },
   clientName: {
-    color: COLORS.inkMuted,
+    color: COLORS.accent,
     ...TYPOGRAPHY.caption,
     textTransform: "uppercase",
     letterSpacing: 0.8,
     fontWeight: "700",
-    marginBottom: 4,
+  },
+  clientBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: COLORS.accentSoft,
+    paddingHorizontal: SPACING.small,
+    paddingVertical: 4,
+    borderRadius: RADII.small,
+    marginBottom: SPACING.small,
   },
   title: {
     color: COLORS.ink,

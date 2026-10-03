@@ -19,7 +19,7 @@ export const useProjectDetails = (
 ): ProjectDetailsResult => {
   const session = useAuthStore((state) => state.session);
   const query = useQuery({
-    queryKey: [PROJECT_DETAILS_QUERY_KEY, projectId],
+    queryKey: [PROJECT_DETAILS_QUERY_KEY, projectId, session?.user.id],
     queryFn: () => {
       if (!session || !projectId) {
         return Promise.reject(new Error(PROJECT_DETAILS_LOAD_ERROR_MESSAGE));

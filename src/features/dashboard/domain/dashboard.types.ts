@@ -12,6 +12,14 @@ export interface ProjectViewModel {
   workGroupCount: number;
 }
 
+export interface AssignedCityViewModel {
+  id: string;
+  code: string;
+  name: string;
+  projectCount: number;
+  projects: readonly ProjectViewModel[];
+}
+
 export interface ProjectDetailsViewModel extends ProjectViewModel {
   city: string;
   startDate: string;
@@ -34,7 +42,50 @@ export interface DashboardWorkItemViewModel {
   workSubGroupName: string;
   status: string;
   progressPercent: number;
-  targetCompletionDate: string;
+  targetCompletionDate: string | null;
   remarks: string;
   assignedUsers: readonly DashboardWorkItemAssigneeViewModel[];
+}
+
+export interface AnalyticsWorkRequestViewModel {
+  id: string;
+  requestNumber: string;
+  projectName: string;
+  cityName: string;
+  workItemName: string;
+  status: string;
+  targetCompletionDate: string;
+  assignedToNames: string;
+}
+
+export interface AnalyticsDisplayRequest extends AnalyticsWorkRequestViewModel {
+  isDelayed: boolean;
+  statusLabel: string;
+}
+
+export interface AnalyticsSegmentViewModel {
+  key: string;
+  label: string;
+  count: number;
+}
+
+export interface ProjectAnalyticsViewModel extends ProjectViewModel {
+  projectNumber: string;
+  cityId: string;
+  cityCode: string;
+  cityName: string;
+  status: string;
+  targetCompletionDate: string | null;
+}
+
+export interface AnalyticsDisplayProject extends ProjectAnalyticsViewModel {
+  statusLabel: string;
+  delayDays: number;
+}
+
+export interface DashboardAnalyticsViewModel {
+  projects: readonly AnalyticsDisplayProject[];
+  statusSegments: readonly AnalyticsSegmentViewModel[];
+  citySegments: readonly AnalyticsSegmentViewModel[];
+  delayedCount: number;
 }
