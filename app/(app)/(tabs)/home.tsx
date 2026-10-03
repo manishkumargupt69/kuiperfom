@@ -4,7 +4,7 @@ import type { ListRenderItemInfo } from "react-native";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 
-import AppHeader from "@/src/components/ui/AppHeader";
+import DrawerHeader from "@/src/components/ui/DrawerHeader";
 import AsyncStateView from "@/src/components/ui/AsyncStateView";
 import ScreenContainer from "@/src/components/ui/ScreenContainer";
 import { useAuthStore } from "@/src/features/auth/state/auth-store";
@@ -15,7 +15,7 @@ import { SCREEN_HORIZONTAL_PADDING, SPACING, TYPOGRAPHY, COLORS } from "@/src/th
 import { showMessage } from "@/src/utils/show-success-message";
 
 const MODULE_GRID_COLUMNS = 2;
-const MODULE_ROUTES: Record<ModuleKey, "/(app)/work-assigned" | "/(app)/incidents"> = { "work-assigned": "/(app)/work-assigned", incidents: "/(app)/incidents" };
+const MODULE_ROUTES: Record<ModuleKey, "/(app)/(tabs)/work-assigned" | "/(app)/incidents"> = { "work-assigned": "/(app)/(tabs)/work-assigned", incidents: "/(app)/incidents" };
 const MODULE_ACTIONS: Record<ModuleKey, () => void> = {
   "work-assigned": () => router.push(MODULE_ROUTES["work-assigned"]),
   incidents: () => router.push(MODULE_ROUTES.incidents),
@@ -23,7 +23,7 @@ const MODULE_ACTIONS: Record<ModuleKey, () => void> = {
 
 const openModule = (module: ModuleViewModel): void => {
   if (module.children && module.children.length > 0) {
-    router.push(`/(app)/module/${module.id}` as any);
+    router.push({ pathname: "/(app)/module/[id]", params: { id: module.id } });
     return;
   }
   if (module.key) {
@@ -48,7 +48,7 @@ const renderModule = ({ item }: ListRenderItemInfo<ModuleViewModel>): ReactEleme
 };
 
 const getModuleKey = (module: ModuleViewModel): string => module.id;
-const renderModulesHeader = (): ReactElement => <Text style={styles.title}>Modules</Text>;
+const renderModulesHeader = (): ReactElement => <Text style={styles.title}>Menu</Text>;
 
 export default function HomeScreen(): ReactElement {
   const session = useAuthStore((state) => state.session);
@@ -56,7 +56,7 @@ export default function HomeScreen(): ReactElement {
   const handleRetry = useCallback((): void => { void reload(); }, [reload]);
   return (
     <ScreenContainer>
-      <AppHeader title="SiteGuard247" showMenu={true} />
+      <DrawerHeader title="SiteGuard247" />
       {viewState.status === "success" ? <FlatList columnWrapperStyle={styles.moduleRow} contentContainerStyle={styles.list} data={viewState.data} keyExtractor={getModuleKey} ListHeaderComponent={renderModulesHeader} numColumns={MODULE_GRID_COLUMNS} renderItem={renderModule} showsVerticalScrollIndicator={false} /> : <View style={styles.state}>{renderModulesHeader()}<AsyncStateView emptyMessage="No mobile modules are assigned to your role." message={viewState.status === "error" ? viewState.message : undefined} onRetry={handleRetry} status={viewState.status} variant="list" /></View>}
     </ScreenContainer>
   );

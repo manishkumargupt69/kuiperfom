@@ -35,6 +35,7 @@ export default function ModuleCard({
       accessibilityHint={accessibilityHint}
       accessibilityLabel={`${title}. ${description}`}
       accessibilityRole="button"
+      android_ripple={{ color: "rgba(0, 0, 0, 0.1)", borderless: false }}
       nativeID={id}
       onPress={onPress}
       style={getCardStyle}

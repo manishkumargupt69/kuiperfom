@@ -13,6 +13,8 @@ const MOBILE_MODULE_KEYS: Readonly<Record<string, ModuleKey>> = {
   "incident / sub incident type": "incidents",
   "work request": "work-assigned",
   "work assigned": "work-assigned",
+  "work report": "work-assigned",
+  "work reporting": "work-assigned",
   "view and report incidents": "incidents",
 };
 

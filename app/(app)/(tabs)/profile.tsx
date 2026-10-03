@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 import { useCallback } from "react";
 import { Redirect, router } from "expo-router";
 
-import AppHeader from "@/src/components/ui/AppHeader";
+import DrawerHeader from "@/src/components/ui/DrawerHeader";
 import ScreenContainer from "@/src/components/ui/ScreenContainer";
 import { useChangePassword } from "@/src/features/auth/hooks/use-change-password";
 import { useChangeMpin } from "@/src/features/auth/hooks/use-change-mpin";
@@ -25,7 +25,6 @@ export default function ProfileScreen(): ReactElement {
     updateField: updateChangeMpinField,
   } = changeMpin;
   const { open: openSetMpin, updateField: updateSetMpinField } = setMpin;
-  const handleBack = useCallback((): void => router.back(), []);
   const handleOldPasswordChange = useCallback(
     (value: string): void => updateChangePasswordField("oldPassword", value),
     [updateChangePasswordField],
@@ -81,7 +80,7 @@ export default function ProfileScreen(): ReactElement {
   return (
     <>
       <ScreenContainer>
-        <AppHeader title="SiteGuard247" showMenu={true} />
+        <DrawerHeader title="Profile" />
         <UserProfileView
           onChangePasswordPress={changePassword.open}
           onMpinPress={handleMpinPress}

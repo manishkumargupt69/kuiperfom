@@ -1,24 +1,22 @@
 import type { ReactElement } from "react";
 import { useCallback, useMemo } from "react";
 import type { ListRenderItemInfo } from "react-native";
-import { FlatList, StyleSheet, Text, View } from "react-native";
+import { FlatList, StyleSheet, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
-import { TouchableOpacity } from "react-native-gesture-handler";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import AsyncStateView from "@/src/components/ui/AsyncStateView";
+import DetailHeader from "@/src/components/ui/DetailHeader";
 import ScreenContainer from "@/src/components/ui/ScreenContainer";
 import { useAuthStore } from "@/src/features/auth/state/auth-store";
 import type { ModuleKey, ModuleViewModel } from "@/src/features/modules/domain/module.types";
 import { usePermittedModules } from "@/src/features/modules/hooks/use-permitted-modules";
 import ModuleCard from "@/src/features/modules/presentation/ModuleCard";
-import { SCREEN_HORIZONTAL_PADDING, SPACING, TYPOGRAPHY, COLORS } from "@/src/theme/tokens";
+import { SCREEN_HORIZONTAL_PADDING, SPACING } from "@/src/theme/tokens";
 import { showMessage } from "@/src/utils/show-success-message";
 
 const MODULE_GRID_COLUMNS = 2;
-const MODULE_ROUTES: Record<ModuleKey, "/(app)/work-assigned" | "/(app)/incidents"> = {
-  "work-assigned": "/(app)/work-assigned",
+const MODULE_ROUTES: Record<ModuleKey, "/(app)/(tabs)/work-assigned" | "/(app)/incidents"> = {
+  "work-assigned": "/(app)/(tabs)/work-assigned",
   incidents: "/(app)/incidents",
 };
 
@@ -29,7 +27,7 @@ const MODULE_ACTIONS: Record<ModuleKey, () => void> = {
 
 const openModule = (module: ModuleViewModel): void => {
   if (module.children && module.children.length > 0) {
-    router.push(`/(app)/module/${module.id}` as any);
+    router.push({ pathname: "/(app)/module/[id]", params: { id: module.id } });
     return;
   }
   if (module.key) {
@@ -75,7 +73,7 @@ export default function SubModuleScreen(): ReactElement {
   const session = useAuthStore((state) => state.session);
   const { viewState, reload } = usePermittedModules(session);
   const handleRetry = useCallback((): void => { void reload(); }, [reload]);
-  const insets = useSafeAreaInsets();
+  const handleBack = useCallback((): void => router.back(), []);
 
   const currentModule = useMemo(() => {
     if (viewState.status === "success" && id) {
@@ -88,12 +86,7 @@ export default function SubModuleScreen(): ReactElement {
 
   return (
     <ScreenContainer>
-      <View style={[styles.header, { paddingTop: insets.top + SPACING.medium }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.ink} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>{currentModule?.title ?? "Modules"}</Text>
-      </View>
+      <DetailHeader onBack={handleBack} title={currentModule?.title ?? "Modules"} />
 
       {viewState.status === "success" ? (
         <FlatList
@@ -129,27 +122,6 @@ export default function SubModuleScreen(): ReactElement {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: SCREEN_HORIZONTAL_PADDING,
-    paddingBottom: SPACING.medium,
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.border,
-    marginBottom: SPACING.medium,
-  },
-  backButton: {
-    padding: SPACING.extraSmall,
-    marginRight: SPACING.small,
-  },
-  headerTitle: {
-    ...TYPOGRAPHY.sectionTitle,
-    color: COLORS.ink,
-    flex: 1,
-    fontWeight: "800",
-    letterSpacing: -0.3,
-  },
   list: { paddingBottom: SPACING.section, paddingHorizontal: SCREEN_HORIZONTAL_PADDING, paddingTop: SPACING.medium },
   moduleRow: { gap: SPACING.medium },
   state: { flex: 1, paddingHorizontal: SCREEN_HORIZONTAL_PADDING },
