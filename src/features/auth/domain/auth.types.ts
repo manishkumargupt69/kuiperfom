@@ -50,6 +50,22 @@ export interface AuthSession {
   user: AuthenticatedUser;
 }
 
+export interface UserProfileDetailsResponseDto {
+  status: string;
+  data: { data: { profilePic: string | null } };
+}
+
+export interface ProfilePhotoUploadResponseDto {
+  status: string;
+  data: { gcsPath: string; signedUrl: string; publicUrl: string };
+}
+
+export interface ProfilePhotoFile {
+  uri: string;
+  name: string;
+  mimeType: string;
+}
+
 export type LoginRequestDto =
   | (CredentialsInput & { detail: true; mpin?: never })
   | { userId: string; mpin: string; detail: true; password?: never };

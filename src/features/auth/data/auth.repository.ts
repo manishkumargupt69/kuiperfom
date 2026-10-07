@@ -8,11 +8,27 @@ import type {
   LoginRoleComponentDto,
   LoginResponseDto,
   SetMpinInput,
+  ProfilePhotoFile,
+  ProfilePhotoUploadResponseDto,
+  UserProfileDetailsResponseDto,
 } from "@/src/features/auth/domain/auth.types";
 import { createAuthenticatedHeaders } from "@/src/features/auth/data/authenticated-headers";
-import { executeJsonRequest, getApiErrorMessage, isApiErrorResponse } from "@/src/utils/api-client";
+import { executeJsonRequest, executeMultipartRequest, getApiErrorMessage, isApiErrorResponse } from "@/src/utils/api-client";
+import { appendFormDataFile } from "@/src/utils/append-form-data-file";
 
 const API_BASE_URL = "http://34.100.253.156/fom-api";
+
+const getProfilePhotoUrl = (path: string): string =>
+  `${API_BASE_URL}/${path.replace(/^\/+/, "").split("/").map(encodeURIComponent).join("/")}`;
+
+const isUserProfileDetailsResponseDto = (value: unknown): value is UserProfileDetailsResponseDto =>
+  isRecord(value) && value.status === "success" && isRecord(value.data) &&
+  isRecord(value.data.data) && isNullableString(value.data.data.profilePic);
+
+const isProfilePhotoUploadResponseDto = (value: unknown): value is ProfilePhotoUploadResponseDto =>
+  isRecord(value) && value.status === "success" && isRecord(value.data) &&
+  typeof value.data.gcsPath === "string" && typeof value.data.signedUrl === "string" &&
+  typeof value.data.publicUrl === "string";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
@@ -135,6 +151,34 @@ const mapLoginResponseToSession = (response: LoginResponseDto): AuthSession => {
 };
 
 export class AuthRepository {
+  async getProfilePhoto(session: AuthSession): Promise<string | null> {
+    const { response, body } = await executeJsonRequest({
+      url: `${API_BASE_URL}/user/details-user/${session.user.id}`,
+      method: "POST",
+      headers: { ...createAuthenticatedHeaders(session), "Content-Type": "application/json" },
+      body: { select: { profilePic: true } },
+    });
+    if (!response.ok || !isUserProfileDetailsResponseDto(body)) {
+      throw new Error(getApiErrorMessage(body, "Profile photo could not be loaded."));
+    }
+    return body.data.data.profilePic ? getProfilePhotoUrl(body.data.data.profilePic) : null;
+  }
+
+  async uploadProfilePhoto(session: AuthSession, file: ProfilePhotoFile): Promise<string> {
+    const formData = new FormData();
+    appendFormDataFile({ formData, fieldName: "file", file: { uri: file.uri, name: file.name, type: file.mimeType } });
+    const { response, body } = await executeMultipartRequest({
+      url: `${API_BASE_URL}/user/upload/${session.user.id}`,
+      method: "PUT",
+      headers: createAuthenticatedHeaders(session),
+      body: formData,
+    });
+    if (!response.ok || !isProfilePhotoUploadResponseDto(body)) {
+      throw new Error(getApiErrorMessage(body, "Profile photo could not be uploaded."));
+    }
+    return getProfilePhotoUrl(body.data.gcsPath);
+  }
+
   async loginWithCredentials(input: CredentialsInput): Promise<AuthSession> {
     const requestBody: LoginRequestDto = { ...input, detail: true };
     return this.login(requestBody);

@@ -7,8 +7,10 @@ import ScreenContainer from "@/src/components/ui/ScreenContainer";
 import { useChangePassword } from "@/src/features/auth/hooks/use-change-password";
 import { useChangeMpin } from "@/src/features/auth/hooks/use-change-mpin";
 import { useSetMpin } from "@/src/features/auth/hooks/use-set-mpin";
+import { useProfilePhoto } from "@/src/features/auth/hooks/use-profile-photo";
 import ChangeMpinModal from "@/src/features/auth/presentation/ChangeMpinModal";
 import ChangePasswordModal from "@/src/features/auth/presentation/ChangePasswordModal";
+import ProfilePhotoSourceSheet from "@/src/features/auth/presentation/ProfilePhotoSourceSheet";
 import SetMpinModal from "@/src/features/auth/presentation/SetMpinModal";
 import UserProfileView from "@/src/features/auth/presentation/UserProfileView";
 import { useAuthStore } from "@/src/features/auth/state/auth-store";
@@ -19,6 +21,9 @@ export default function ProfileScreen(): ReactElement {
   const changePassword = useChangePassword(session);
   const changeMpin = useChangeMpin(session);
   const setMpin = useSetMpin(session);
+  const profilePhoto = useProfilePhoto(session);
+  const { reload: reloadProfilePhoto } = profilePhoto;
+  const handlePhotoRetry = useCallback((): void => { void reloadProfilePhoto(); }, [reloadProfilePhoto]);
   const { updateField: updateChangePasswordField } = changePassword;
   const {
     open: openChangeMpin,
@@ -82,12 +87,23 @@ export default function ProfileScreen(): ReactElement {
       <ScreenContainer>
         <DrawerHeader title="Profile" />
         <UserProfileView
+          photoState={profilePhoto.viewState}
+          isUploadingPhoto={profilePhoto.isUploading}
+          onPhotoPress={profilePhoto.choosePhoto}
+          onPhotoRetry={handlePhotoRetry}
           onChangePasswordPress={changePassword.open}
           onMpinPress={handleMpinPress}
           onSignOutPress={handleSignOut}
           user={session.user}
         />
       </ScreenContainer>
+      <ProfilePhotoSourceSheet
+        isVisible={profilePhoto.isSourceSheetVisible}
+        onChooseCamera={profilePhoto.chooseCamera}
+        onChooseLibrary={profilePhoto.chooseLibrary}
+        onClose={profilePhoto.closeSourceSheet}
+        onDismiss={profilePhoto.onSourceSheetDismiss}
+      />
       <ChangePasswordModal
         confirmation={changePassword.fields.confirmation}
         confirmationError={changePassword.errors.confirmation}

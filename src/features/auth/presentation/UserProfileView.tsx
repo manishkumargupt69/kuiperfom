@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { memo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type {
   PressableStateCallbackType,
   StyleProp,
@@ -9,10 +9,10 @@ import type {
 import Feather from "@expo/vector-icons/Feather";
 
 import type { AuthenticatedUser } from "@/src/features/auth/domain/auth.types";
+import type { ViewState } from "@/src/types/view-state";
 import ProfileDetailRow from "@/src/features/auth/presentation/ProfileDetailRow";
 import {
   COLORS,
-  CONTROL_HEIGHT,
   MINIMUM_TOUCH_SIZE,
   RADII,
   SCREEN_HORIZONTAL_PADDING,
@@ -21,9 +21,8 @@ import {
 } from "@/src/theme/tokens";
 import { formatDateTime } from "@/src/utils/format-date-time";
 
-const AVATAR_SIZE = 44;
-const AVATAR_ICON_SIZE = 22;
 const ACTION_ICON_SIZE = 18;
+const AVATAR_SIZE = 80;
 const TOP_CARD_SIGN_OUT_SIZE = MINIMUM_TOUCH_SIZE;
 
 const getTopCardSignOutStyle = ({
@@ -38,6 +37,10 @@ const getCompanySummary = (user: AuthenticatedUser): string =>
 
 interface UserProfileViewProps {
   user: AuthenticatedUser;
+  photoState: ViewState<string>;
+  isUploadingPhoto: boolean;
+  onPhotoPress: () => void;
+  onPhotoRetry: () => void;
   onMpinPress: () => void;
   onChangePasswordPress: () => void;
   onSignOutPress: () => void;
@@ -45,6 +48,10 @@ interface UserProfileViewProps {
 
 function UserProfileView({
   user,
+  photoState,
+  isUploadingPhoto,
+  onPhotoPress,
+  onPhotoRetry,
   onMpinPress,
   onChangePasswordPress,
   onSignOutPress,
@@ -72,9 +79,18 @@ function UserProfileView({
           <Text style={styles.topCardSignOutLabel}>Sign out</Text>
         </Pressable>
         <View style={styles.avatarContainer}>
-          <View accessibilityElementsHidden style={styles.avatar}>
-            <Feather color={COLORS.accent} name="user" size={32} />
-          </View>
+          <Pressable accessibilityLabel="Change profile photo" accessibilityRole="button" accessibilityState={{ disabled: isUploadingPhoto }} disabled={isUploadingPhoto} onPress={onPhotoPress} style={styles.avatar}>
+            <View style={styles.avatarFrame}>
+              {photoState.status === "success" ? <Image accessibilityLabel="Profile photo" resizeMode="cover" source={{ uri: photoState.data }} style={styles.avatarImage} /> : null}
+              {photoState.status === "loading" ? <View style={styles.avatarSkeleton} /> : null}
+              {photoState.status === "empty" || photoState.status === "idle" || photoState.status === "error" ? <Feather color={COLORS.accent} name="user" size={32} /> : null}
+              {isUploadingPhoto ? <View style={styles.uploadOverlay}><ActivityIndicator color={COLORS.white} /></View> : null}
+            </View>
+            <View style={styles.editBadge}>
+              <Feather color={COLORS.white} name="edit-2" size={14} />
+            </View>
+          </Pressable>
+          {photoState.status === "error" ? <Pressable accessibilityRole="button" onPress={onPhotoRetry}><Text style={styles.photoRetry}>Retry photo</Text></Pressable> : null}
         </View>
         <View style={styles.identityText}>
           <Text
@@ -185,19 +201,41 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   avatarContainer: {
-    padding: SPACING.small,
-    backgroundColor: COLORS.background,
-    borderRadius: RADII.pill,
+    alignItems: "center",
     marginBottom: SPACING.medium,
   },
   avatar: {
     alignItems: "center",
+    height: 88,
+    justifyContent: "center",
+    width: 88,
+  },
+  avatarFrame: {
+    alignItems: "center",
     backgroundColor: COLORS.accentSoft,
     borderRadius: RADII.pill,
-    height: 80,
+    height: AVATAR_SIZE,
     justifyContent: "center",
-    width: 80,
+    width: AVATAR_SIZE,
+    overflow: "hidden",
   },
+  avatarImage: { height: AVATAR_SIZE, width: AVATAR_SIZE },
+  avatarSkeleton: { backgroundColor: COLORS.surfaceMuted, height: AVATAR_SIZE, width: AVATAR_SIZE },
+  editBadge: {
+    alignItems: "center",
+    backgroundColor: COLORS.accent,
+    borderColor: COLORS.surface,
+    borderRadius: RADII.pill,
+    borderWidth: 2,
+    bottom: 0,
+    height: 30,
+    justifyContent: "center",
+    position: "absolute",
+    right: 0,
+    width: 30,
+  },
+  uploadOverlay: { alignItems: "center", backgroundColor: COLORS.overlay, bottom: 0, justifyContent: "center", left: 0, position: "absolute", right: 0, top: 0 },
+  photoRetry: { color: COLORS.accent, ...TYPOGRAPHY.caption, fontWeight: "700", marginTop: SPACING.small },
   identityText: {
     alignItems: "center",
   },
