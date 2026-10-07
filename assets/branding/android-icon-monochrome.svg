@@ -1,5 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="432" height="432" viewBox="0 0 432 432">
-  <text x="50" y="235" fill="#000000" font-family="IBM Plex Sans, sans-serif" font-size="50" font-weight="700" text-anchor="start">SITEGUARD</text>
-  <rect x="310" y="190" width="70" height="50" rx="8" fill="#000000"/>
-  <text x="345" y="228" fill="#FFFFFF" font-family="IBM Plex Sans, sans-serif" font-size="32" font-weight="700" text-anchor="middle">24/7</text>
+  <defs>
+    <mask id="shield-cutout">
+      <rect width="432" height="432" fill="#FFFFFF"/>
+      <rect x="222" y="272" width="168" height="76" rx="19" fill="#000000"/>
+    </mask>
+    <mask id="badge-cutout">
+      <rect x="232" y="281" width="147" height="56" rx="17" fill="#FFFFFF"/>
+      <text x="305" y="322" fill="#000000" font-family="Arial, sans-serif" font-size="37" font-weight="900" text-anchor="middle">24/7</text>
+    </mask>
+  </defs>
+  <path d="M216 61 352 119V239C352 303 304 346 216 387 128 346 80 303 80 239V119Z" fill="none" stroke="#FFFFFF" stroke-width="21" stroke-linejoin="round" mask="url(#shield-cutout)"/>
+  <text x="216" y="252" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="141" font-weight="900" letter-spacing="-8" text-anchor="middle">SG</text>
+  <rect x="232" y="281" width="147" height="56" rx="17" fill="#FFFFFF" mask="url(#badge-cutout)"/>
 </svg>

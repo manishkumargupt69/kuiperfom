@@ -1,10 +1,10 @@
 import type { ReactElement } from "react";
-import { Animated, StyleSheet, Text, View } from "react-native";
+import { Animated, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 
 import BrandLogo from "./BrandLogo";
-import { COLORS, RADII, SPACING, TYPOGRAPHY } from "@/src/theme/tokens";
+import { COLORS, SPACING } from "@/src/theme/tokens";
 
 interface LaunchSplashScreenProps {
   iconScale: Animated.Value;

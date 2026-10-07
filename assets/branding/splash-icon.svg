@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  <text x="120" y="540" fill="#082823" font-family="IBM Plex Sans, sans-serif" font-size="120" font-weight="700" text-anchor="start">SITEGUARD</text>
-  <rect x="740" y="435" width="160" height="120" rx="20" fill="#082823"/>
-  <text x="820" y="525" fill="#12D18E" font-family="IBM Plex Sans, sans-serif" font-size="80" font-weight="700" text-anchor="middle">24/7</text>
+  <text x="80" y="540" fill="#082823" font-family="IBM Plex Sans, sans-serif" font-size="120" font-weight="700" text-anchor="start" textLength="630" lengthAdjust="spacingAndGlyphs">SITEGUARD</text>
+  <rect x="735" y="435" width="210" height="120" rx="20" fill="#082823"/>
+  <text x="840" y="525" fill="#12D18E" font-family="IBM Plex Sans, sans-serif" font-size="76" font-weight="700" text-anchor="middle" textLength="155" lengthAdjust="spacingAndGlyphs">24/7</text>
 </svg>

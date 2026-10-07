@@ -1,6 +1,5 @@
 import type { ReactElement } from "react";
 import { StyleSheet, Text, View, ViewStyle } from "react-native";
-import { SPACING } from "@/src/theme/tokens";
 
 interface BrandLogoProps {
   fontSize?: number;
@@ -15,9 +14,9 @@ export default function BrandLogo({ fontSize = 24, style }: BrandLogoProps): Rea
 
   return (
     <View style={[styles.container, { gap: scaledGap }, style]}>
-      <Text style={[styles.siteguard, { fontSize }]}>SITEGUARD</Text>
+      <Text adjustsFontSizeToFit minimumFontScale={0.7} numberOfLines={1} style={[styles.siteguard, { fontSize }]}>SITEGUARD</Text>
       <View style={[styles.box, { paddingHorizontal: scaledPaddingH, paddingVertical: scaledPaddingV, borderRadius: scaledBorderRadius }]}>
-        <Text style={[styles.twentyFourSeven, { fontSize: fontSize * 0.7 }]}>24/7</Text>
+        <Text adjustsFontSizeToFit numberOfLines={1} style={[styles.twentyFourSeven, { fontSize: fontSize * 0.7 }]}>24/7</Text>
       </View>
     </View>
   );
@@ -27,12 +26,15 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     alignItems: "center",
+    maxWidth: "100%",
   },
   siteguard: {
+    flexShrink: 1,
     fontFamily: "IBMPlexSans_700Bold",
     color: "#082823",
   },
   box: {
+    flexShrink: 0,
     backgroundColor: "#082823",
     justifyContent: "center",
     alignItems: "center",
