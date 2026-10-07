@@ -398,6 +398,8 @@ const mapProjectDetailsDto = (
   projectName: project.projectName,
   city: project.city,
   startDate: project.startDate,
+  // Treat empty groups from the assigned-work endpoint as no user assignment.
+  emptyReason: "unassigned",
   workGroupCount: project.workGroups.length,
   workGroups: project.workGroups.map(mapWorkGroupDto),
 });
@@ -450,6 +452,7 @@ const mapSearchProjectDetails = ({
     ...assignedProject,
     city: project.city.name,
     startDate: project.startDate,
+    emptyReason: project.workItemProjects.length === 0 ? "no-work-items" : "unassigned",
     workGroupCount: workGroups.length,
     workGroups,
   };
@@ -570,12 +573,13 @@ export class DashboardRepository {
   ): Promise<ProjectDetailsViewModel> {
     const { response, body } = await executeJsonRequest({
       url: `${API_BASE_URL}${PROJECT_WORK_GROUPS_PATH}/${projectId}`,
-      method: "PUT",
+      method: "POST",
       headers: createAuthenticatedHeaders(session),
     });
     if (response.status === 404) return this.getProjectDetailsFromSearch(session, projectId);
     if (!response.ok) throw new Error(`Project details returned HTTP ${response.status}.`);
     if (!isDashboardProjectDetailsResponseDto(body)) throw new Error("Project details response is incomplete.");
+    if (body.status !== "success") throw new Error("Project details could not be loaded.");
 
     return mapProjectDetailsDto(body.data);
   }

@@ -4,13 +4,14 @@ import Feather from "@expo/vector-icons/Feather";
 import { AccessibilityInfo, Animated, Easing, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import type { LayoutChangeEvent } from "react-native";
 import { router } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 
 import AsyncStateView from "@/src/components/ui/AsyncStateView";
 import DrawerHeader from "@/src/components/ui/DrawerHeader";
 import ScreenContainer from "@/src/components/ui/ScreenContainer";
 import SearchField from "@/src/components/ui/SearchField";
 import SecondaryButton from "@/src/components/ui/SecondaryButton";
-import type { AnalyticsDisplayProject } from "@/src/features/dashboard/domain/dashboard.types";
+import type { AnalyticsDisplayProject, DashboardAnalyticsViewModel } from "@/src/features/dashboard/domain/dashboard.types";
 import { useDashboardAnalytics } from "@/src/features/dashboard/hooks/use-dashboard-analytics";
 import AnalyticsPieChart from "@/src/features/dashboard/presentation/AnalyticsPieChart";
 import AnalyticsProjectRow from "@/src/features/dashboard/presentation/AnalyticsProjectRow";
@@ -20,16 +21,24 @@ import { COLORS, MINIMUM_TOUCH_SIZE, SCREEN_HORIZONTAL_PADDING, SPACING, TYPOGRA
 type DashboardFilter = { kind: "status"; key: string } | { kind: "delayed" } | null;
 
 const getProjectKey = (project: AnalyticsDisplayProject): string => project.id;
+const EMPTY_ANALYTICS: DashboardAnalyticsViewModel = {
+  projects: [],
+  statusSegments: [],
+  citySegments: [],
+  delayedCount: 0,
+};
 
 function DashboardSkeleton(): ReactElement {
   const shimmer = useRef(new Animated.Value(0.3)).current;
   useEffect(() => {
-    Animated.loop(
+    const animation = Animated.loop(
       Animated.sequence([
         Animated.timing(shimmer, { toValue: 0.7, duration: 800, useNativeDriver: true }),
         Animated.timing(shimmer, { toValue: 0.3, duration: 800, useNativeDriver: true }),
       ])
-    ).start();
+    );
+    animation.start();
+    return () => animation.stop();
   }, [shimmer]);
 
   return (
@@ -73,11 +82,23 @@ export default function DashboardScreen(): ReactElement {
   const projectListOffset = useRef(0);
   const reduceMotionRef = useRef(false);
   const hasRevealedRef = useRef(false);
+  const hasFocusedRef = useRef(false);
   const metricReveal = useRef(new Animated.Value(0)).current;
   const statusReveal = useRef(new Animated.Value(0)).current;
   const cityReveal = useRef(new Animated.Value(0)).current;
-  const analytics = viewState.status === "success" ? viewState.data : null;
+  const analytics = viewState.status === "success"
+    ? viewState.data
+    : viewState.status === "empty" ? EMPTY_ANALYTICS : null;
   const hasAnalytics = Boolean(analytics);
+  const hasProjects = (analytics?.projects.length ?? 0) > 0;
+
+  useFocusEffect(useCallback((): void => {
+    if (hasFocusedRef.current) {
+      void reload();
+    } else {
+      hasFocusedRef.current = true;
+    }
+  }, [reload]));
 
   useEffect(() => {
     if (!hasAnalytics || hasRevealedRef.current) return;
@@ -170,6 +191,12 @@ export default function DashboardScreen(): ReactElement {
         .some((value) => value.toLocaleLowerCase().includes(normalizedSearch));
     });
   }, [analytics, filter, searchText]);
+  let emptyMessage = "No projects match this filter.";
+  if (searchText.trim()) {
+    emptyMessage = filter
+      ? "No projects match your search with this filter."
+      : "No projects match your search.";
+  }
 
   return (
     <ScreenContainer>
@@ -179,6 +206,7 @@ export default function DashboardScreen(): ReactElement {
           ref={listRef}
           contentContainerStyle={styles.list}
           data={filteredProjects}
+          nestedScrollEnabled
           keyExtractor={getProjectKey}
           renderItem={renderProject}
           keyboardShouldPersistTaps="handled"
@@ -201,34 +229,35 @@ export default function DashboardScreen(): ReactElement {
                   <View style={styles.overview}>
                     <Animated.View style={[styles.metricsRow, { opacity: metricReveal, transform: [{ translateY: metricReveal.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }]}>
                       <View style={styles.metricCard}>
-                        <View style={[styles.metricIconBox, { backgroundColor: COLORS.successSoft }]}><Feather color={COLORS.success} name="layers" size={17} /></View>
+                        <View style={[styles.metricIconBox, { backgroundColor: COLORS.successBackground }]}><Feather color={COLORS.successInk} name="layers" size={17} /></View>
                         <Text style={[styles.metricLabel, { color: COLORS.ink }]}>Total Projects</Text>
                         <Text style={styles.metricValue}>{analytics.projects.length}</Text>
-                        <Text style={styles.metricHint}>Assigned to you</Text>
+                        <Text style={styles.metricHint}>{hasProjects ? "Assigned to you" : "No projects assigned"}</Text>
                       </View>
-                      <Pressable accessibilityLabel={`Delayed projects: ${analytics.delayedCount}. Filter list`} accessibilityRole="button" accessibilityState={{ selected: filter?.kind === "delayed" }} onPress={showDelayed} style={({ pressed }) => [styles.metricCard, pressed && styles.pressed, filter?.kind === "delayed" && styles.selected]}>
+                      <Pressable accessibilityLabel={hasProjects ? `Delayed projects: ${analytics.delayedCount}. Filter list` : "No delayed projects"} accessibilityRole="button" accessibilityState={{ disabled: !hasProjects, selected: filter?.kind === "delayed" }} disabled={!hasProjects} onPress={showDelayed} style={({ pressed }) => [styles.metricCard, pressed && styles.pressed, filter?.kind === "delayed" && styles.selected]}>
                         <View style={[styles.metricIconBox, { backgroundColor: COLORS.dangerSoft }]}><Feather color={COLORS.danger} name="clock" size={17} /></View>
                         <Text style={[styles.metricLabel, { color: COLORS.ink }]}>Delayed</Text>
                         <View style={styles.delayedValueRow}>
                           <Text style={styles.metricValue}>{analytics.delayedCount}</Text>
-                          <Feather color={COLORS.inkMuted} name="chevron-right" size={20} />
+                          {hasProjects ? <Feather color={COLORS.inkMuted} name="chevron-right" size={20} /> : null}
                         </View>
+                        {!hasProjects ? <Text style={styles.metricHint}>No delayed projects</Text> : null}
                       </Pressable>
                     </Animated.View>
                     <Animated.View style={{ opacity: statusReveal, transform: [{ translateY: statusReveal.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }}>
-                      <AnalyticsPieChart title="Project status" unit="projects" palette="status" segments={analytics.statusSegments} selectedKey={filter?.kind === "status" ? filter.key : null} onSelect={showStatus} />
+                      <AnalyticsPieChart title="Project status" unit="projects" palette="status" segments={analytics.statusSegments} emptyMessage="No project statuses to show." selectedKey={filter?.kind === "status" ? filter.key : null} onSelect={showStatus} />
                     </Animated.View>
                     <Animated.View style={{ opacity: cityReveal, transform: [{ translateY: cityReveal.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }}>
-                      <AnalyticsPieChart title="Projects by city" unit="projects" palette="city" segments={analytics.citySegments} onSelect={openCityList} />
+                      <AnalyticsPieChart title="Projects by city" unit="projects" palette="city" segments={analytics.citySegments} emptyMessage="No projects found city wise." onSelect={openCityList} />
                     </Animated.View>
                   </View>
                   <View onLayout={captureProjectListOffset} style={styles.projectsSection}>
                     <View style={styles.projectsHeading}>
                       <Text accessibilityRole="header" style={styles.sectionTitle}>Projects</Text>
-                      <Text style={styles.resultCount}>{filteredProjects.length} of {analytics.projects.length}</Text>
+                      {hasProjects ? <Text style={styles.resultCount}>{filteredProjects.length} of {analytics.projects.length}</Text> : null}
                     </View>
-                    <SearchField accessibilityLabel="Search projects" onChangeText={setSearchText} onClear={clearSearch} placeholder="Search projects" value={searchText} />
-                    {filter ? <SecondaryButton label="Clear filter" onPress={clearFilter} /> : null}
+                    {hasProjects ? <SearchField accessibilityLabel="Search projects" onChangeText={setSearchText} onClear={clearSearch} placeholder="Search projects" value={searchText} /> : null}
+                    {hasProjects && filter ? <SecondaryButton label="Clear filter" onPress={clearFilter} /> : null}
                   </View>
                 </>
               ) : (
@@ -236,7 +265,15 @@ export default function DashboardScreen(): ReactElement {
               )}
             </View>
           }
-          ListEmptyComponent={analytics ? <Text style={styles.empty}>No projects match this filter.</Text> : null}
+          ListEmptyComponent={analytics ? hasProjects ? (
+            <Text style={styles.empty}>{emptyMessage}</Text>
+          ) : (
+            <View style={styles.emptyProjectsCard}>
+              <View style={styles.emptyProjectsIcon}><Feather color={COLORS.accent} name="folder" size={22} /></View>
+              <Text style={styles.emptyProjectsTitle}>No projects assigned</Text>
+              <Text style={styles.emptyProjectsDescription}>Projects assigned to you will appear here.</Text>
+            </View>
+          ) : null}
         />
       ) : (
         <View style={styles.state}>
@@ -256,6 +293,8 @@ const styles = StyleSheet.create({
   title: { color: COLORS.ink, ...TYPOGRAPHY.sectionTitle, fontWeight: "800" },
   refreshButton: { alignItems: "center", height: MINIMUM_TOUCH_SIZE, justifyContent: "center", width: MINIMUM_TOUCH_SIZE },
   overview: { gap: SPACING.medium },
+  metrics: { backgroundColor: COLORS.surface, borderRadius: 16, padding: SPACING.large },
+  totalMetric: { gap: SPACING.extraSmall },
   metricsRow: { flexDirection: "row", gap: SPACING.medium },
   metricCard: { flex: 1, backgroundColor: COLORS.surface, borderColor: COLORS.border, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: SPACING.large, minHeight: 124, gap: SPACING.extraSmall },
   metricIconBox: { alignItems: "center", borderRadius: 9, height: 30, justifyContent: "center", width: 30, marginBottom: SPACING.extraSmall },
@@ -270,6 +309,10 @@ const styles = StyleSheet.create({
   sectionTitle: { color: COLORS.ink, ...TYPOGRAPHY.control, fontWeight: "700" },
   resultCount: { color: COLORS.inkMuted, ...TYPOGRAPHY.caption, fontVariant: ["tabular-nums"] },
   empty: { color: COLORS.inkMuted, ...TYPOGRAPHY.body, paddingVertical: SPACING.extraLarge },
+  emptyProjectsCard: { alignItems: "center", backgroundColor: COLORS.surface, borderColor: COLORS.border, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, gap: SPACING.small, padding: SPACING.extraLarge },
+  emptyProjectsIcon: { alignItems: "center", backgroundColor: COLORS.accentSoft, borderRadius: 24, height: MINIMUM_TOUCH_SIZE, justifyContent: "center", marginBottom: SPACING.extraSmall, width: MINIMUM_TOUCH_SIZE },
+  emptyProjectsTitle: { color: COLORS.ink, ...TYPOGRAPHY.control, fontWeight: "700", textAlign: "center" },
+  emptyProjectsDescription: { color: COLORS.inkMuted, ...TYPOGRAPHY.body, textAlign: "center" },
   
   // Skeleton Specific Styles
   section: { backgroundColor: COLORS.surface, borderColor: COLORS.border, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, gap: SPACING.medium, padding: SPACING.large },

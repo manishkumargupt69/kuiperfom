@@ -5,15 +5,18 @@ import { router } from "expo-router";
 
 import DetailHeader from "@/src/components/ui/DetailHeader";
 import AsyncStateView from "@/src/components/ui/AsyncStateView";
+import EmptyListState from "@/src/components/ui/EmptyListState";
 import SearchField from "@/src/components/ui/SearchField";
 import ScreenContainer from "@/src/components/ui/ScreenContainer";
+import SecondaryButton from "@/src/components/ui/SecondaryButton";
+import { useAuthStore } from "@/src/features/auth/state/auth-store";
 import type { DashboardWorkItemViewModel } from "@/src/features/dashboard/domain/dashboard.types";
 import { useProjectDetails } from "@/src/features/dashboard/hooks/use-project-details";
+import ProjectDetailsErrorView from "@/src/features/dashboard/presentation/ProjectDetailsErrorView";
 import ProjectWorkItemRow from "@/src/features/dashboard/presentation/ProjectWorkItemRow";
 import ProjectSummaryRow from "@/src/features/dashboard/presentation/ProjectSummaryRow";
 import { useDashboardStore } from "@/src/features/dashboard/state/dashboard-store";
 import { COLORS, SCREEN_HORIZONTAL_PADDING, SPACING, TYPOGRAPHY } from "@/src/theme/tokens";
-import SecondaryButton from "@/src/components/ui/SecondaryButton";
 
 const DAYS_AHEAD = 30;
 const getItemKey = (item: DashboardWorkItemViewModel): string => item.id;
@@ -22,8 +25,12 @@ const getLocalDateKey = (date: Date): string =>
 
 export default function WorkGroupDetailsScreen(): ReactElement {
   const selectedProject = useDashboardStore((state) => state.selectedProject);
+  const signedInUserName = useAuthStore((state) => state.session?.user.name);
   const { viewState, reload } = useProjectDetails(selectedProject?.id ?? null);
   const [searchText, setSearchText] = useState("");
+  const unassignedMessage = signedInUserName
+    ? `No work items are assigned to ${signedInUserName} in this project.`
+    : "No work items are assigned to you in this project.";
 
   const handleBack = useCallback((): void => {
     router.back();
@@ -37,6 +44,9 @@ export default function WorkGroupDetailsScreen(): ReactElement {
   const openAudit = useCallback((): void => router.push("/(app)/audit-work-items"), []);
   const openWorkItem = useCallback((workItem: DashboardWorkItemViewModel): void => {
     router.push({ pathname: "/(app)/work-assigned/[id]", params: { id: workItem.id } });
+  }, []);
+  const openItemAudit = useCallback((workItem: DashboardWorkItemViewModel): void => {
+    router.push({ pathname: "/(app)/audit-work-items/[id]", params: { id: workItem.id } });
   }, []);
 
   const listItems = useMemo(() => {
@@ -52,8 +62,8 @@ export default function WorkGroupDetailsScreen(): ReactElement {
   }, [viewState, searchText]);
 
   const renderItem = useCallback(
-    ({ item }: { item: DashboardWorkItemViewModel }): ReactElement => <ProjectWorkItemRow workItem={item} onPress={openWorkItem} />,
-    [openWorkItem],
+    ({ item }: { item: DashboardWorkItemViewModel }): ReactElement => <ProjectWorkItemRow workItem={item} onPress={openWorkItem} onAudit={openItemAudit} />,
+    [openItemAudit, openWorkItem],
   );
 
   const renderHeader = useCallback(
@@ -99,18 +109,25 @@ export default function WorkGroupDetailsScreen(): ReactElement {
           keyExtractor={getItemKey}
           ListHeaderComponent={renderHeader}
           renderItem={renderItem}
-          ListEmptyComponent={<Text style={styles.empty}>No work items match this date range and search.</Text>}
+          ListEmptyComponent={<EmptyListState message="No work items available for this project." />}
           showsVerticalScrollIndicator={false}
         />
       ) : (
         <View style={styles.state}>
-          <AsyncStateView
-            emptyMessage="No work items are assigned to this project."
-            message={viewState.status === "error" ? viewState.message : undefined}
-            onRetry={handleRetry}
-            status={viewState.status}
-            variant="list"
-          />
+          {viewState.status === "error" ? (
+            <View style={styles.feedback}>
+              <ProjectDetailsErrorView onRetry={handleRetry} projectName={selectedProject.projectName} />
+            </View>
+          ) : (
+            <AsyncStateView
+              emptyMessage={viewState.status === "empty" && viewState.reason === "unassigned"
+                ? unassignedMessage
+                : "No work items available for this project."}
+              onRetry={handleRetry}
+              status={viewState.status}
+              variant="list"
+            />
+          )}
         </View>
       )}
     </ScreenContainer>
@@ -126,6 +143,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: SCREEN_HORIZONTAL_PADDING,
   },
+  feedback: { flex: 1, justifyContent: "center" },
   headerContainer: {
     marginBottom: SPACING.medium,
   },
@@ -138,6 +156,5 @@ const styles = StyleSheet.create({
     paddingTop: SPACING.medium,
   },
   listHint: { color: COLORS.inkMuted, ...TYPOGRAPHY.caption, marginBottom: SPACING.medium },
-  empty: { color: COLORS.inkMuted, ...TYPOGRAPHY.body, paddingVertical: SPACING.extraLarge },
   auditAction: { alignItems: "flex-start", marginTop: SPACING.medium },
 });

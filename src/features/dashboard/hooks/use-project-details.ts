@@ -10,7 +10,10 @@ const PROJECT_DETAILS_QUERY_KEY = "project-details";
 const PROJECT_DETAILS_LOAD_ERROR_MESSAGE = "Project details could not be loaded. Try again.";
 
 interface ProjectDetailsResult {
-  viewState: ViewState<ProjectDetailsViewModel>;
+  viewState: Exclude<ViewState<ProjectDetailsViewModel>, { status: "empty" }> | {
+    status: "empty";
+    reason: ProjectDetailsViewModel["emptyReason"];
+  };
   reload: () => Promise<void>;
 }
 
@@ -46,7 +49,7 @@ export const useProjectDetails = (
     };
   }
   if (!query.data || query.data.workGroups.length === 0) {
-    return { viewState: { status: "empty" }, reload };
+    return { viewState: { status: "empty", reason: query.data?.emptyReason ?? "no-work-items" }, reload };
   }
 
   return { viewState: { status: "success", data: query.data }, reload };

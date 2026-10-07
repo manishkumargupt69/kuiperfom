@@ -23,6 +23,7 @@ export interface AssignedCityViewModel {
 export interface ProjectDetailsViewModel extends ProjectViewModel {
   city: string;
   startDate: string;
+  emptyReason: "no-work-items" | "unassigned";
   workGroups: readonly WorkGroupViewModel[];
 }
 

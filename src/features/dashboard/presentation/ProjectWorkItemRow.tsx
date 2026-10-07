@@ -21,80 +21,93 @@ import { formatDateTime } from "@/src/utils/format-date-time";
 interface ProjectWorkItemRowProps {
   workItem: DashboardWorkItemViewModel;
   onPress?: (workItem: DashboardWorkItemViewModel) => void;
+  onAudit?: (workItem: DashboardWorkItemViewModel) => void;
   accessibilityHint?: string;
 }
+
+const AUDIT_ACTION_RESERVED_WIDTH = 96;
 
 const getRowStyle = ({
   pressed,
 }: PressableStateCallbackType): StyleProp<ViewStyle> => [
-  styles.container,
+  styles.main,
   pressed && styles.pressed,
 ];
 
 function ProjectWorkItemRow({
   workItem,
   onPress,
+  onAudit,
   accessibilityHint,
 }: ProjectWorkItemRowProps): ReactElement {
   const handlePress = onPress ? (): void => onPress(workItem) : undefined;
+  const handleAudit = onAudit ? (): void => onAudit(workItem) : undefined;
   const assigneeNames = workItem.assignedUsers
     .map((assignee) => assignee.name)
     .join(", ");
 
   return (
-    <Pressable
-      accessibilityHint={onPress ? accessibilityHint ?? "Opens work details" : undefined}
-      accessibilityLabel={`${workItem.workItemName}${workItem.workItemCode ? `, code ${workItem.workItemCode}` : ""}`}
-      accessibilityRole={onPress ? "button" : "none"}
-      onPress={handlePress}
-      style={onPress ? getRowStyle : styles.container}
-    >
-      <View style={styles.header}>
-        <View style={styles.headerGroup}>
-          <Text style={styles.headerLabel}>Work Sub Group</Text>
-          <Text style={styles.subgroup}>{workItem.workSubGroupName}</Text>
+    <View style={styles.container}>
+      <Pressable
+        accessibilityHint={onPress ? accessibilityHint ?? "Opens work details" : undefined}
+        accessibilityLabel={`${workItem.workItemName}${workItem.workItemCode ? `, code ${workItem.workItemCode}` : ""}`}
+        accessibilityRole={onPress ? "button" : "none"}
+        onPress={handlePress}
+        style={onPress ? getRowStyle : styles.main}
+      >
+        <View style={[styles.header, onAudit && styles.headerWithAction]}>
+          <View style={styles.headerGroup}>
+            <Text style={styles.headerLabel}>Work Sub Group</Text>
+            <Text style={styles.subgroup}>{workItem.workSubGroupName}</Text>
+          </View>
+          <View style={styles.headerGroup}>
+            <Text style={styles.headerLabel}>Work Item</Text>
+            <Text style={styles.title}>{workItem.workItemName}</Text>
+          </View>
         </View>
-        <View style={styles.headerGroup}>
-          <Text style={styles.headerLabel}>Work Item</Text>
-          <Text style={styles.title}>{workItem.workItemName}</Text>
+        <View style={styles.progressRow}>
+          <StatusBadge label={workItem.status.replace(/_/g, " ")} tone={workItem.status === "COMPLETED" ? "success" : workItem.status === "PENDING" || workItem.status === "HOLD" ? "warning" : "info"} />
+          <Text style={styles.progress}>{workItem.progressPercent}% complete</Text>
         </View>
-      </View>
-      <View style={styles.progressRow}>
-        <StatusBadge label={workItem.status.replace(/_/g, " ")} tone={workItem.status === "COMPLETED" ? "success" : workItem.status === "PENDING" || workItem.status === "HOLD" ? "warning" : "info"} />
-        <Text style={styles.progress}>{workItem.progressPercent}% complete</Text>
-      </View>
-      {workItem.remarks ? <Text numberOfLines={2} style={styles.remarks}>{workItem.remarks}</Text> : null}
-      
-      <View style={styles.detailsGrid}>
-        {workItem.workItemCode ? (
+        {workItem.remarks ? <Text numberOfLines={2} style={styles.remarks}>{workItem.remarks}</Text> : null}
+
+        <View style={styles.detailsGrid}>
+          {workItem.workItemCode ? (
+            <View style={styles.detailItem}>
+              <Feather name="hash" size={14} color={COLORS.inkMuted} style={styles.icon} />
+              <View>
+                <Text style={styles.detailLabel}>Item Code</Text>
+                <Text style={styles.detailValue}>{workItem.workItemCode}</Text>
+              </View>
+            </View>
+          ) : null}
+
           <View style={styles.detailItem}>
-            <Feather name="hash" size={14} color={COLORS.inkMuted} style={styles.icon} />
+            <Feather name="calendar" size={14} color={COLORS.inkMuted} style={styles.icon} />
             <View>
-              <Text style={styles.detailLabel}>Item Code</Text>
-              <Text style={styles.detailValue}>{workItem.workItemCode}</Text>
+              <Text style={styles.detailLabel}>Target Completion Date</Text>
+              <Text style={styles.detailValue}>{workItem.targetCompletionDate ? formatDateTime(workItem.targetCompletionDate) : "TBD"}</Text>
             </View>
           </View>
-        ) : null}
 
-        <View style={styles.detailItem}>
-          <Feather name="calendar" size={14} color={COLORS.inkMuted} style={styles.icon} />
-          <View>
-            <Text style={styles.detailLabel}>Target Completion Date</Text>
-            <Text style={styles.detailValue}>{workItem.targetCompletionDate ? formatDateTime(workItem.targetCompletionDate) : "TBD"}</Text>
-          </View>
-        </View>
-
-        {assigneeNames ? (
-          <View style={styles.detailItem}>
-            <Feather name="users" size={14} color={COLORS.inkMuted} style={styles.icon} />
-            <View>
-              <Text style={styles.detailLabel}>Assigned to</Text>
-              <Text style={styles.detailValue} numberOfLines={1}>{assigneeNames}</Text>
+          {assigneeNames ? (
+            <View style={styles.detailItem}>
+              <Feather name="users" size={14} color={COLORS.inkMuted} style={styles.icon} />
+              <View>
+                <Text style={styles.detailLabel}>Assigned to</Text>
+                <Text style={styles.detailValue} numberOfLines={1}>{assigneeNames}</Text>
+              </View>
             </View>
-          </View>
-        ) : null}
-      </View>
-    </Pressable>
+          ) : null}
+        </View>
+      </Pressable>
+      {onAudit ? (
+        <Pressable accessibilityLabel={`Audit ${workItem.workItemName}`} accessibilityRole="button" onPress={handleAudit} style={styles.auditAction}>
+          <Feather color={COLORS.accent} name="check-square" size={17} />
+          <Text style={styles.auditLabel}>Audit</Text>
+        </Pressable>
+      ) : null}
+    </View>
   );
 }
 
@@ -107,15 +120,16 @@ const styles = StyleSheet.create({
     borderRadius: RADII.large,
     borderWidth: 1,
     marginBottom: SPACING.medium,
-    padding: SPACING.large,
+    overflow: "hidden",
     shadowColor: COLORS.ink,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 8,
     elevation: 2,
   },
+  main: { padding: SPACING.large },
   pressed: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.accentSoft,
     borderColor: COLORS.accent,
     opacity: 0.9,
     transform: [{ scale: 0.99 }],
@@ -124,6 +138,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.medium,
     gap: SPACING.small,
   },
+  headerWithAction: { paddingRight: AUDIT_ACTION_RESERVED_WIDTH },
   headerGroup: {
     flexDirection: "column",
   },
@@ -178,4 +193,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
   },
+  auditAction: { alignItems: "center", flexDirection: "row", gap: SPACING.small, minHeight: 48, paddingHorizontal: SPACING.medium, position: "absolute", right: SPACING.extraSmall, top: SPACING.extraSmall },
+  auditLabel: { color: COLORS.accent, ...TYPOGRAPHY.body, fontWeight: "700" },
 });

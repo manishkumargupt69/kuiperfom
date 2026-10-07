@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { useAuthStore } from "@/src/features/auth/state/auth-store";
@@ -80,7 +80,8 @@ export const useDashboardAnalytics = (): DashboardAnalyticsResult => {
     enabled: Boolean(session),
   });
   const analytics = useMemo(() => query.data ? mapAnalytics(query.data) : null, [query.data]);
-  const reload = async (): Promise<void> => { await query.refetch(); };
+  const { refetch } = query;
+  const reload = useCallback(async (): Promise<void> => { await refetch(); }, [refetch]);
 
   if (!session) return { viewState: { status: "idle" }, reload };
   if (query.isPending) return { viewState: { status: "loading" }, reload };
