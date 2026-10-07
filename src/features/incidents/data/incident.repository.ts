@@ -59,7 +59,7 @@ interface IncidentListItemDto {
   incidentTypeId: string;
   incidentSubTypeId: string;
   displayIncident: string | null;
-  title: string;
+  title?: string | null;
   description: string;
   status: string;
   assignedToId: string | null;
@@ -81,6 +81,7 @@ interface IncidentMappingOptions {
   types: readonly IncidentOptionViewModel[];
   subtypes: readonly IncidentOptionViewModel[];
   assignees: readonly IncidentOptionViewModel[];
+  currentUser: AuthSession["user"];
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -111,7 +112,7 @@ const isIncidentListItemDto = (
   typeof value.incidentTypeId === "string" &&
   typeof value.incidentSubTypeId === "string" &&
   isNullableString(value.displayIncident) &&
-  typeof value.title === "string" &&
+  (value.title === undefined || isNullableString(value.title)) &&
   typeof value.description === "string" &&
   typeof value.status === "string" &&
   isNullableString(value.assignedToId) &&
@@ -205,6 +206,7 @@ const mapIncidentDto = ({
   types,
   subtypes,
   assignees,
+  currentUser,
 }: IncidentMappingOptions): IncidentViewModel => ({
   id: incident.id,
   incidentNumber: incident.incidentNumber,
@@ -212,12 +214,11 @@ const mapIncidentDto = ({
   type: getOptionLabel(types, incident.incidentTypeId),
   subtypeId: incident.incidentSubTypeId,
   subtype: getOptionLabel(subtypes, incident.incidentSubTypeId),
-  title: incident.title || incident.displayIncident || "Incident",
   description: incident.description,
   assignedToId: incident.assignedToId ?? "",
-  assignedToName: incident.assignedToId
-    ? getOptionLabel(assignees, incident.assignedToId)
-    : "Unassigned",
+  assignedToName: incident.assignedToId === currentUser.id
+    ? currentUser.name
+    : incident.assignedToId ? getOptionLabel(assignees, incident.assignedToId) : "Unassigned",
   remarks: incident.remarks,
   status: STATUS_PRESENTATION[incident.status] ?? {
     label: incident.status,
@@ -234,7 +235,7 @@ const appendLocalAttachments = (
     .filter((attachment) => attachment.uri.startsWith("file:"))
     .forEach((attachment) => {
       const uploadFile = getSupportedUploadFile(attachment);
-      if (!uploadFile) throw new Error("Only image, PDF, Word, and Excel files are allowed.");
+      if (!uploadFile) throw new Error("Only photos, MP4 video, PDF, Word, and Excel files are allowed.");
       appendFormDataFile({
         formData,
         fieldName: "files",
@@ -250,10 +251,11 @@ const appendLocalAttachments = (
 
 const createIncidentFormData = (input: IncidentCreateInput): FormData => {
   const formData = new FormData();
+  const description = input.description.trim();
   formData.append("incidentTypeId", input.typeId);
   formData.append("incidentSubTypeId", input.subtypeId);
-  formData.append("title", input.title.trim());
-  formData.append("description", input.description.trim());
+  formData.append("title", description);
+  formData.append("description", description);
   formData.append("assignedToId", input.assignedToId);
   formData.append("remarks", input.remarks.trim());
   appendLocalAttachments(formData, input.attachments);
@@ -286,20 +288,21 @@ export class IncidentRepository {
     session: AuthSession,
     page: number = 1,
   ): Promise<readonly IncidentViewModel[]> {
-    const [incidentDtos, types, subtypes, assignees] = await Promise.all([
-      searchRecords({
-        session,
-        path: "incident/search-incident",
-        body: { page, limit: 25 },
-        isItem: isIncidentListItemDto,
-        errorMessage: "Incidents could not be loaded.",
-      }),
+    const incidentDtos = await searchRecords({
+      session,
+      path: "incident/search-incident",
+      body: { page, limit: 25 },
+      isItem: isIncidentListItemDto,
+      errorMessage: "Incidents could not be loaded.",
+    });
+    if (incidentDtos.length === 0) return [];
+    const [types, subtypes, assignees] = await Promise.all([
       this.getTypes(session),
       this.getSubtypes(session, ""),
       this.getAssignees(session),
     ]);
     return incidentDtos.map((incident) =>
-      mapIncidentDto({ incident, types, subtypes, assignees }),
+      mapIncidentDto({ incident, types, subtypes, assignees, currentUser: session.user }),
     );
   }
 

@@ -10,8 +10,9 @@ import FormField from "@/src/components/ui/FormField";
 import MediaAttachmentTray from "@/src/components/ui/MediaAttachmentTray";
 import PrimaryButton from "@/src/components/ui/PrimaryButton";
 import ScreenContainer from "@/src/components/ui/ScreenContainer";
+import EvidenceCameraModal from "@/src/features/evidence/presentation/EvidenceCameraModal";
 import EvidenceAttachmentList from "@/src/features/evidence/presentation/EvidenceAttachmentList";
-import { useWorkEditor } from "@/src/features/work/hooks/use-work-editor";
+import { useWorkEvidenceFlow } from "@/src/features/work/hooks/use-work-evidence-flow";
 import WorkDetailForm from "@/src/features/work/presentation/WorkDetailForm";
 import { useUnsavedChanges } from "@/src/hooks/use-unsaved-changes";
 import { COLORS, SCREEN_HORIZONTAL_PADDING, SPACING, TYPOGRAPHY } from "@/src/theme/tokens";
@@ -23,8 +24,8 @@ type WorkDetailParams = { id?: string };
 
 export default function WorkDetailScreen(): ReactElement {
   const { id = "" } = useLocalSearchParams<WorkDetailParams>();
-  const [isEvidenceVisible, setIsEvidenceVisible] = useState(false);
   const [isRemarksVisible, setIsRemarksVisible] = useState(false);
+  const evidenceFlow = useWorkEvidenceFlow(id);
   const {
     editorState,
     isSaving,
@@ -35,18 +36,14 @@ export default function WorkDetailScreen(): ReactElement {
     setRemarks,
     viewState,
     attachments,
-    addDocument,
-    addFromGallery,
-    addPhoto,
+    preparation,
     removeAttachment,
-  } = useWorkEditor(id);
+  } = evidenceFlow.editor;
   const originalCompletion = viewState.status === "success" ? viewState.data.completionPercentage : null;
   const isDirty = editorState.isHydrated && (editorState.completionPercentage !== originalCompletion
-    || Boolean(editorState.remarks.length || editorState.transition || attachments.length));
+    || Boolean(editorState.remarks.length || editorState.transition || attachments.length || preparation));
   const allowNavigation = useUnsavedChanges(isDirty);
   const handleBack = useCallback((): void => router.back(), []);
-  const openEvidence = useCallback((): void => setIsEvidenceVisible(true), []);
-  const closeEvidence = useCallback((): void => setIsEvidenceVisible(false), []);
   const openRemarks = useCallback((): void => setIsRemarksVisible(true), []);
   const closeRemarks = useCallback((): void => setIsRemarksVisible(false), []);
   const openHistory = useCallback((): void => {
@@ -76,7 +73,7 @@ export default function WorkDetailScreen(): ReactElement {
             evidenceCount={viewState.data.attachments.length + attachments.length}
             item={viewState.data}
             onCompletionChange={setCompletionPercentage}
-            onEvidencePress={openEvidence}
+            onEvidencePress={evidenceFlow.openEvidence}
             onHistoryPress={openHistory}
             onRemarksPress={openRemarks}
             onTransitionSelect={selectTransition}
@@ -96,11 +93,16 @@ export default function WorkDetailScreen(): ReactElement {
       {viewState.status === "success" ? (
         <View style={styles.footer}>
           {viewState.data.availableTransitions.length > 0 ? (
-            <PrimaryButton
-              isLoading={isSaving}
-              label="Submit Update"
-              onPress={handleSave}
-            />
+            <>
+              {preparation ? <Text accessibilityLiveRegion="polite" style={styles.footerStatus}>Preparing evidence before submit…</Text> : null}
+              {isSaving && attachments.length > 0 ? <Text accessibilityLiveRegion="polite" style={styles.footerStatus}>Uploading evidence and saving update…</Text> : null}
+              <PrimaryButton
+                isDisabled={!isDirty || !editorState.transition || Boolean(preparation)}
+                isLoading={isSaving}
+                label="Submit Update"
+                onPress={handleSave}
+              />
+            </>
           ) : null}
         </View>
       ) : null}
@@ -110,17 +112,18 @@ export default function WorkDetailScreen(): ReactElement {
           <PrimaryButton label="Done" onPress={closeRemarks} />
         </View>
       </BottomSheetModal>
-      <BottomSheetModal accessibilityLabel="Close evidence" isVisible={isEvidenceVisible} onClose={closeEvidence} title="Evidence">
+      <BottomSheetModal accessibilityLabel="Close evidence" isVisible={evidenceFlow.isEvidenceVisible} onClose={evidenceFlow.closeEvidence} onDismiss={evidenceFlow.handleEvidenceDismiss} title="Evidence">
         <View style={styles.evidenceSheet}>
           {viewState.status === "success" && viewState.data.attachments.length > 0 ? (
             <View style={styles.existingEvidence}>
               <Text style={styles.sheetLabel}>Existing evidence</Text>
-              <EvidenceAttachmentList attachments={viewState.data.attachments} />
+              <EvidenceAttachmentList attachments={viewState.data.attachments} hasBottomAction />
             </View>
           ) : null}
-          <MediaAttachmentTray attachments={attachments} onAddDocument={addDocument} onAddFromGallery={addFromGallery} onAddPhoto={addPhoto} onRemove={removeAttachment} title="Add evidence" />
+          <MediaAttachmentTray attachments={attachments} onAddDocument={evidenceFlow.chooseFile} onAddFromGallery={evidenceFlow.chooseGallery} onAddPhoto={evidenceFlow.chooseCamera} onRemove={removeAttachment} preparation={preparation} supportsVideo title="Add evidence" />
         </View>
       </BottomSheetModal>
+      <EvidenceCameraModal isVisible={evidenceFlow.isCameraVisible} onCaptured={evidenceFlow.handleCameraCaptured} onClose={evidenceFlow.closeCamera} onDismiss={evidenceFlow.handleCameraDismiss} />
     </ScreenContainer>
   );
 }
@@ -133,6 +136,7 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     padding: SCREEN_HORIZONTAL_PADDING,
   },
+  footerStatus: { color: COLORS.inkMuted, ...TYPOGRAPHY.caption, marginBottom: SPACING.small, textAlign: "center" },
   remarksSheet: { gap: SPACING.large, padding: SCREEN_HORIZONTAL_PADDING },
   evidenceSheet: { gap: SPACING.large, padding: SCREEN_HORIZONTAL_PADDING },
   existingEvidence: { gap: SPACING.small },

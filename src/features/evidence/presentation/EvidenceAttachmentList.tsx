@@ -10,6 +10,7 @@ import { COLORS, SPACING, TYPOGRAPHY } from "@/src/theme/tokens";
 
 interface EvidenceAttachmentListProps {
   attachments: readonly EvidenceAttachment[];
+  hasBottomAction?: boolean;
   onRemove?: (id: string) => void;
   showLocationUnavailable?: boolean;
 }
@@ -18,6 +19,7 @@ const getAttachmentKey = (attachment: EvidenceAttachment): string => attachment.
 
 export default function EvidenceAttachmentList({
   attachments,
+  hasBottomAction = false,
   onRemove,
   showLocationUnavailable = false,
 }: EvidenceAttachmentListProps): ReactElement {
@@ -55,6 +57,7 @@ export default function EvidenceAttachmentList({
       {selectedAttachment ? (
         <EvidencePreviewModal
           attachment={selectedAttachment}
+          hasBottomAction={hasBottomAction}
           onClose={closePreview}
         />
       ) : null}

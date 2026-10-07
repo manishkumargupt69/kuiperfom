@@ -8,7 +8,6 @@ export interface IncidentViewModel {
   type: string;
   subtypeId: string;
   subtype: string;
-  title: string;
   description: string;
   assignedToId: string;
   assignedToName: string;
@@ -22,7 +21,6 @@ export interface IncidentOptionViewModel { id: string; label: string; }
 export interface IncidentCreateInput {
   typeId: string;
   subtypeId: string;
-  title: string;
   description: string;
   assignedToId: string;
   remarks: string;

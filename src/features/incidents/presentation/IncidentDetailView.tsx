@@ -13,41 +13,40 @@ export default function IncidentDetailView({ incident }: IncidentDetailViewProps
   const classification = [incident.type, incident.subtype].filter(Boolean).join(" / ");
   return (
     <View style={styles.container}>
-      <View style={styles.summary}>
-        <View style={styles.topLine}><Text style={styles.number}>{incident.incidentNumber}</Text><StatusBadge label={incident.status.label} tone={incident.status.tone} /></View>
-        <Text style={styles.title}>{incident.title}</Text>
+      <View style={styles.card}>
+        <View style={styles.topLine}><Text style={styles.title}>{incident.incidentNumber}</Text><StatusBadge label={incident.status.label} tone={incident.status.tone} /></View>
         <View style={styles.metaRow}><Feather color={COLORS.accent} name="alert-circle" size={16} /><Text style={styles.meta}>{classification}</Text></View>
-      </View>
-      <View style={styles.card}>
-        <View style={styles.sectionHeader}><Feather color={COLORS.accent} name="align-left" size={17} /><Text style={styles.sectionTitle}>Description</Text></View>
-        <Text style={styles.body}>{incident.description}</Text>
-      </View>
-      <View style={styles.card}>
-        <View style={styles.sectionHeader}><Feather color={COLORS.accent} name="user" size={17} /><Text style={styles.sectionTitle}>Assigned to</Text></View>
-        <Text style={styles.body}>{incident.assignedToName}</Text>
-      </View>
-      {incident.remarks ? <View style={styles.card}><View style={styles.sectionHeader}><Feather color={COLORS.accent} name="message-square" size={17} /><Text style={styles.sectionTitle}>Remarks</Text></View><Text style={styles.body}>{incident.remarks}</Text></View> : null}
-      <View style={styles.card}>
-        <View style={styles.sectionHeader}><Feather color={COLORS.accent} name="paperclip" size={17} /><Text style={styles.sectionTitle}>Evidence</Text></View>
-        <EvidenceAttachmentList attachments={incident.attachments} />
-      </View>
-      <View style={styles.card}>
-        <View style={styles.sectionHeader}><Feather color={COLORS.accent} name="clock" size={17} /><Text style={styles.sectionTitle}>Incident history</Text></View>
-        <Text style={styles.muted}>Current status: {incident.status.label}.</Text>
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}><Feather color={COLORS.accent} name="align-left" size={17} /><Text style={styles.sectionTitle}>Description</Text></View>
+          <Text style={styles.body}>{incident.description}</Text>
+        </View>
+        {incident.remarks ? (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}><Feather color={COLORS.accent} name="message-square" size={17} /><Text style={styles.sectionTitle}>Remarks</Text></View>
+            <Text style={styles.body}>{incident.remarks}</Text>
+          </View>
+        ) : null}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}><Feather color={COLORS.accent} name="paperclip" size={17} /><Text style={styles.sectionTitle}>Evidence</Text></View>
+          <EvidenceAttachmentList attachments={incident.attachments} hasBottomAction />
+        </View>
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}><Feather color={COLORS.accent} name="clock" size={17} /><Text style={styles.sectionTitle}>Incident history</Text></View>
+          <Text style={styles.muted}>Current status: {incident.status.label}.</Text>
+        </View>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { gap: SPACING.large, padding: SPACING.large },
-  summary: { backgroundColor: COLORS.surface, borderColor: COLORS.border, borderRadius: RADII.large, borderWidth: 1, gap: SPACING.medium, padding: SPACING.large },
+  container: { padding: SPACING.large },
   topLine: { alignItems: "center", flexDirection: "row", gap: SPACING.medium, justifyContent: "space-between" },
-  number: { color: COLORS.accent, ...TYPOGRAPHY.caption, fontWeight: "800", letterSpacing: 0.5 },
-  title: { color: COLORS.ink, ...TYPOGRAPHY.sectionTitle, fontWeight: "800" },
+  title: { color: COLORS.ink, ...TYPOGRAPHY.sectionTitle, flex: 1, fontWeight: "800" },
   metaRow: { alignItems: "center", flexDirection: "row", gap: SPACING.small },
   meta: { color: COLORS.inkMuted, ...TYPOGRAPHY.body, flex: 1 },
-  card: { backgroundColor: COLORS.surface, borderColor: COLORS.border, borderRadius: RADII.large, borderWidth: 1, gap: SPACING.small, padding: SPACING.large },
+  card: { backgroundColor: COLORS.surface, borderColor: COLORS.border, borderRadius: RADII.large, borderWidth: 1, gap: SPACING.medium, padding: SPACING.large },
+  section: { borderTopColor: COLORS.border, borderTopWidth: StyleSheet.hairlineWidth, gap: SPACING.small, paddingTop: SPACING.medium },
   sectionHeader: { alignItems: "center", flexDirection: "row", gap: SPACING.small },
   sectionTitle: { color: COLORS.ink, ...TYPOGRAPHY.body, fontWeight: "700" },
   body: { color: COLORS.ink, ...TYPOGRAPHY.body },

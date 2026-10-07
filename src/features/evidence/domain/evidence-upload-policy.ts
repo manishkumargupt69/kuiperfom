@@ -27,6 +27,10 @@ export const getSupportedUploadFile = (attachment: EvidenceAttachment): Supporte
     if (!attachment.mimeType.startsWith("image/")) return null;
     return { name: `${attachment.name.replace(/\.[^.]+$/, "")}.jpg`, mimeType: "image/jpeg" };
   }
+  if (attachment.kind === "video") {
+    if (attachment.mimeType !== "video/mp4") return null;
+    return { name: `${attachment.name.replace(/\.[^.]+$/, "")}.mp4`, mimeType: "video/mp4" };
+  }
   if (attachment.kind !== "document") return null;
   const mimeType = getSupportedDocumentMimeType(attachment.name);
   if (!mimeType) return null;

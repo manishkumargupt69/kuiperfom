@@ -1,14 +1,20 @@
 import type { ReactElement, ReactNode } from "react";
-import { useMemo } from "react";
-import { Image, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { useMemo, useState } from "react";
+import { ActivityIndicator, Image, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import Feather from "@expo/vector-icons/Feather";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { useVideoPlayer, VideoView } from "expo-video";
+import Pdf from "react-native-pdf";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import SecondaryButton from "@/src/components/ui/SecondaryButton";
+import { useFloatingNavigationVisibility } from "@/src/components/navigation/use-floating-navigation-visibility";
 import type { EvidenceAttachment } from "@/src/types/evidence";
 import {
   COLORS,
+  DETAIL_ACTION_FOOTER_HEIGHT,
+  DETAIL_HEADER_HEIGHT,
+  FLOATING_TAB_BAR_CONTENT_CLEARANCE,
   MAX_CONTENT_WIDTH,
   RADII,
   SPACING,
@@ -17,6 +23,7 @@ import {
 
 interface EvidencePreviewModalProps {
   attachment: EvidenceAttachment;
+  hasBottomAction: boolean;
   onClose: () => void;
 }
 
@@ -26,10 +33,33 @@ const formatSeconds = (seconds: number): string => {
   return `${minutes}:${String(wholeSeconds % 60).padStart(2, "0")}`;
 };
 
+const getDisplayName = (name: string): string => {
+  try {
+    return decodeURIComponent(name);
+  } catch {
+    return name;
+  }
+};
+
 export default function EvidencePreviewModal({
   attachment,
+  hasBottomAction,
   onClose,
 }: EvidencePreviewModalProps): ReactElement {
+  const hasFloatingNavigation = useFloatingNavigationVisibility();
+  const safeAreaInsets = useSafeAreaInsets();
+  const pdfBackdropInsets = {
+    paddingTop: DETAIL_HEADER_HEIGHT + safeAreaInsets.top,
+    paddingBottom: safeAreaInsets.bottom
+      + (hasBottomAction ? DETAIL_ACTION_FOOTER_HEIGHT : 0)
+      + (hasFloatingNavigation ? FLOATING_TAB_BAR_CONTENT_CLEARANCE : 0),
+  };
+  const isPdf = attachment.kind === "document" && (
+    attachment.mimeType === "application/pdf" || attachment.name.split("?")[0]?.toLowerCase().endsWith(".pdf")
+  );
+  const displayName = getDisplayName(attachment.name);
+  const [pdfStatus, setPdfStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [pdfRetryCount, setPdfRetryCount] = useState(0);
   const audioPlayer = useAudioPlayer(
     attachment.kind === "audio" ? attachment.uri : null,
   );
@@ -41,6 +71,15 @@ export default function EvidencePreviewModal({
     () => ({ uri: attachment.uri }),
     [attachment.uri],
   );
+  const pdfSource = useMemo(
+    () => ({ uri: attachment.uri, cache: attachment.uri.startsWith("http") }),
+    [attachment.uri],
+  );
+
+  const handlePdfRetry = (): void => {
+    setPdfStatus("loading");
+    setPdfRetryCount((count) => count + 1);
+  };
 
   const handleAudioToggle = async (): Promise<void> => {
     if (audioStatus.playing) {
@@ -92,11 +131,35 @@ export default function EvidencePreviewModal({
         />
       </View>
     );
+  } else if (isPdf) {
+    preview = pdfStatus === "error" ? (
+      <View style={styles.pdfFeedback}>
+        <Feather color={COLORS.inkMuted} name="file-text" size={36} />
+        <Text style={styles.documentName}>PDF could not be opened</Text>
+        <Text style={styles.documentMeta}>Check the file or connection and try again.</Text>
+        <SecondaryButton label="Try Again" onPress={handlePdfRetry} />
+      </View>
+    ) : (
+      <Pdf
+        key={pdfRetryCount}
+        onError={() => setPdfStatus("error")}
+        onLoadComplete={() => setPdfStatus("ready")}
+        renderActivityIndicator={() => (
+          <View style={styles.pdfFeedback}>
+            <ActivityIndicator color={COLORS.accent} />
+            <Text style={styles.documentMeta}>Opening PDF…</Text>
+          </View>
+        )}
+        source={pdfSource}
+        style={styles.pdf}
+        trustAllCerts={false}
+      />
+    );
   } else {
     preview = (
       <View style={styles.document}>
         <Feather color={COLORS.accent} name="file-text" size={40} />
-        <Text style={styles.documentName}>{attachment.name}</Text>
+        <Text style={styles.documentName}>{displayName}</Text>
         <Text style={styles.documentMeta}>{attachment.mimeType}</Text>
       </View>
     );
@@ -106,15 +169,19 @@ export default function EvidencePreviewModal({
     <Modal
       animationType="fade"
       onRequestClose={handleClose}
-      statusBarTranslucent
+      statusBarTranslucent={!isPdf}
       transparent
       visible
     >
-      <View style={styles.backdrop}>
-        <View style={styles.modal}>
+      <View style={[
+        styles.backdrop,
+        isPdf && styles.pdfBackdrop,
+        isPdf && pdfBackdropInsets,
+      ]}>
+        <View style={[styles.modal, isPdf && styles.pdfModal]}>
           <View style={styles.header}>
             <Text numberOfLines={1} style={styles.title}>
-              {attachment.name}
+              {displayName}
             </Text>
             <Pressable
               accessibilityLabel="Close evidence preview"
@@ -140,6 +207,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: SPACING.large,
   },
+  pdfBackdrop: { backgroundColor: "transparent" },
   modal: {
     backgroundColor: COLORS.surface,
     borderRadius: RADII.large,
@@ -147,6 +215,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     width: "100%",
   },
+  pdfModal: { flex: 1 },
   header: {
     alignItems: "center",
     borderBottomColor: COLORS.border,
@@ -163,6 +232,8 @@ const styles = StyleSheet.create({
   },
   image: { backgroundColor: COLORS.surfaceMuted, height: 360, width: "100%" },
   video: { backgroundColor: COLORS.ink, height: 280, width: "100%" },
+  pdf: { backgroundColor: COLORS.surfaceMuted, flex: 1, width: "100%" },
+  pdfFeedback: { alignItems: "center", flex: 1, gap: SPACING.medium, justifyContent: "center", padding: SPACING.large },
   audio: { gap: SPACING.large, padding: SPACING.extraLarge },
   duration: { color: COLORS.inkMuted, ...TYPOGRAPHY.body, textAlign: "center" },
   document: {

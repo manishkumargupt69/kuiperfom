@@ -6,6 +6,11 @@ import {
   Video as VideoCompressor,
 } from "react-native-compressor";
 
+import {
+  deleteStampedEvidenceFile,
+  getEvidenceAddressLines,
+  stampEvidenceMedia,
+} from "@/src/features/evidence/data/evidence-stamp.service";
 import type {
   EvidenceAttachment,
   EvidenceKind,
@@ -14,6 +19,7 @@ import type {
 const EVIDENCE_DIRECTORY_NAME = "fom-evidence";
 const BYTES_PER_MEBIBYTE = 1024 * 1024;
 const MULTIPART_OVERHEAD_RESERVE_BYTES = 256 * 1024;
+const COMPRESSION_PROGRESS_SHARE = 0.6;
 export const MAX_EVIDENCE_CONTENT_BYTES =
   10 * BYTES_PER_MEBIBYTE - MULTIPART_OVERHEAD_RESERVE_BYTES;
 
@@ -23,7 +29,9 @@ interface CreateEvidenceAttachmentOptions {
   kind: EvidenceKind;
   mimeType: string;
   durationMilliseconds?: number;
+  stampCapturedAt?: string;
   maximumSizeBytes: number;
+  onProgress?: (progress: number) => void;
 }
 
 const getEvidenceDirectory = (): Directory => {
@@ -40,9 +48,11 @@ const sanitizeFileName = (name: string): string =>
 const getCompressedSourceUri = async ({
   kind,
   sourceUri,
+  onProgress,
 }: {
   kind: EvidenceKind;
   sourceUri: string;
+  onProgress?: (progress: number) => void;
 }): Promise<string> => {
   if (kind === "photo") {
     return ImageCompressor.compress(sourceUri, {
@@ -54,7 +64,7 @@ const getCompressedSourceUri = async ({
     return VideoCompressor.compress(sourceUri, {
       compressionMethod: "auto",
       minimumFileSizeForCompress: 0,
-    });
+    }, onProgress);
   }
   if (kind === "audio") {
     return AudioCompressor.compress(sourceUri, { quality: "medium" });
@@ -76,15 +86,17 @@ const getUploadSourceUri = async ({
   kind,
   sourceUri,
   maximumSizeBytes,
+  onProgress,
 }: {
   kind: EvidenceKind;
   sourceUri: string;
   maximumSizeBytes: number;
+  onProgress?: (progress: number) => void;
 }): Promise<string> => {
   if (kind === "document" && getFileSize(sourceUri) <= maximumSizeBytes) {
     return sourceUri;
   }
-  return getCompressedSourceUri({ kind, sourceUri });
+  return getCompressedSourceUri({ kind, sourceUri, onProgress });
 };
 
 export const createEvidenceAttachment = async ({
@@ -93,7 +105,9 @@ export const createEvidenceAttachment = async ({
   kind,
   mimeType,
   durationMilliseconds,
+  stampCapturedAt,
   maximumSizeBytes,
+  onProgress,
 }: CreateEvidenceAttachmentOptions): Promise<EvidenceAttachment> => {
   if (maximumSizeBytes <= 0) {
     throw new Error(
@@ -101,33 +115,65 @@ export const createEvidenceAttachment = async ({
     );
   }
 
-  const uploadSourceUri = await getUploadSourceUri({
+  const shouldStampMedia = Boolean(stampCapturedAt && (kind === "photo" || kind === "video"));
+  const addressLines = shouldStampMedia ? await getEvidenceAddressLines() : null;
+  const compressedSourceUri = await getUploadSourceUri({
     kind,
     sourceUri,
     maximumSizeBytes,
+    onProgress: stampCapturedAt
+      ? (progress) => onProgress?.(progress * COMPRESSION_PROGRESS_SHARE)
+      : onProgress,
   });
-  const sizeBytes = getFileSize(uploadSourceUri);
-  if (sizeBytes > maximumSizeBytes) {
-    throw new Error(
-      "The file is still too large after compression. Choose a shorter or smaller file.",
+  let stampedSourceUri: string | null = null;
+  try {
+    if (stampCapturedAt && addressLines && (kind === "photo" || kind === "video")) {
+      onProgress?.(COMPRESSION_PROGRESS_SHARE);
+      stampedSourceUri = await stampEvidenceMedia({
+        kind,
+        sourceUri: compressedSourceUri,
+        capturedAt: stampCapturedAt,
+        addressLines,
+        onProgress: (progress) => onProgress?.(
+          COMPRESSION_PROGRESS_SHARE + progress * (1 - COMPRESSION_PROGRESS_SHARE)
+        ),
+      });
+    }
+    const uploadSourceUri = stampedSourceUri ?? compressedSourceUri;
+    const sizeBytes = getFileSize(uploadSourceUri);
+    if (sizeBytes > maximumSizeBytes) {
+      throw new Error(
+        "The processed file is too large. Choose a shorter or smaller file.",
+      );
+    }
+
+    const finalName = stampedSourceUri
+      ? `${name.replace(/\.[^.]+$/, "")}.${kind === "photo" ? "jpg" : "mp4"}`
+      : name;
+    const id = Crypto.randomUUID();
+    const destination = new File(
+      getEvidenceDirectory(),
+      `${id}-${sanitizeFileName(finalName)}`,
     );
+    new File(uploadSourceUri).copy(destination);
+
+    return {
+      id,
+      kind,
+      capturedAt: stampCapturedAt ?? new Date().toISOString(),
+      name: finalName,
+      uri: destination.uri,
+      mimeType: stampedSourceUri ? kind === "photo" ? "image/jpeg" : "video/mp4" : mimeType,
+      sizeBytes,
+      durationMilliseconds,
+    };
+  } finally {
+    if (stampedSourceUri) {
+      try {
+        await deleteStampedEvidenceFile(stampedSourceUri);
+      } catch (error: unknown) {
+        console.warn("Could not remove temporary stamped evidence.", error);
+      }
+    }
   }
-
-  const id = Crypto.randomUUID();
-  const destination = new File(
-    getEvidenceDirectory(),
-    `${id}-${sanitizeFileName(name)}`,
-  );
-  new File(uploadSourceUri).copy(destination);
-
-  return {
-    id,
-    kind,
-    capturedAt: new Date().toISOString(),
-    name,
-    uri: destination.uri,
-    mimeType,
-    sizeBytes,
-    durationMilliseconds,
-  };
 };

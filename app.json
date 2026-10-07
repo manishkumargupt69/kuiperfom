@@ -41,6 +41,14 @@
       "expo-secure-store",
       "expo-font",
       [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow SiteGuard247 to capture work evidence.",
+          "microphonePermission": "Allow SiteGuard247 to record audio with work evidence videos.",
+          "recordAudioAndroid": true
+        }
+      ],
+      [
         "expo-audio",
         {
           "microphonePermission": "Allow Field Operations Management to record voice notes."
@@ -49,9 +57,15 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Field Operations Management to attach photo and video evidence.",
-          "cameraPermission": "Allow Field Operations Management to capture photo and video evidence.",
+          "photosPermission": "Allow SiteGuard247 to choose profile photos and attach evidence.",
+          "cameraPermission": "Allow SiteGuard247 to take profile photos and capture evidence.",
           "microphonePermission": "Allow Field Operations Management to record voice notes."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow SiteGuard247 to add the current address to work and incident evidence."
         }
       ],
       "expo-video",

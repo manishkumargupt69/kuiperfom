@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { useCallback, useState } from "react";
-import { Alert, ScrollView, StyleSheet, View } from "react-native";
+import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 
 import DetailHeader from "@/src/components/ui/DetailHeader";
@@ -10,70 +10,57 @@ import FormField from "@/src/components/ui/FormField";
 import MediaAttachmentTray from "@/src/components/ui/MediaAttachmentTray";
 import PrimaryButton from "@/src/components/ui/PrimaryButton";
 import ScreenContainer from "@/src/components/ui/ScreenContainer";
+import EvidenceCameraModal from "@/src/features/evidence/presentation/EvidenceCameraModal";
 import type { IncidentOptionViewModel } from "@/src/features/incidents/domain/incident.types";
-import { useIncidentReport } from "@/src/features/incidents/hooks/use-incident-report";
+import { useIncidentEvidenceFlow } from "@/src/features/incidents/hooks/use-incident-evidence-flow";
 import IncidentOptionPicker from "@/src/features/incidents/presentation/IncidentOptionPicker";
 import IncidentReportForm from "@/src/features/incidents/presentation/IncidentReportForm";
 import { useUnsavedChanges } from "@/src/hooks/use-unsaved-changes";
-import { COLORS, SCREEN_HORIZONTAL_PADDING, SPACING } from "@/src/theme/tokens";
+import { COLORS, SCREEN_HORIZONTAL_PADDING, SPACING, TYPOGRAPHY } from "@/src/theme/tokens";
 import { showSuccessMessage } from "@/src/utils/show-success-message";
 
-type PickerKind = "type" | "subtype" | "assignee" | null;
+type PickerKind = "type" | "subtype" | null;
 
 const getSubmitErrorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : "Try again.";
 
 export default function NewIncidentScreen(): ReactElement {
   const [pickerKind, setPickerKind] = useState<PickerKind>(null);
-  const [isTitleVisible, setIsTitleVisible] = useState(false);
   const [isDescriptionVisible, setIsDescriptionVisible] = useState(false);
   const [isRemarksVisible, setIsRemarksVisible] = useState(false);
-  const [isEvidenceVisible, setIsEvidenceVisible] = useState(false);
-  const incidentReport = useIncidentReport();
+  const evidenceFlow = useIncidentEvidenceFlow();
   const {
-    addDocument,
-    addFromGallery,
-    addPhoto,
-    assignees,
     attachments,
     isLoadingSubtypes,
     isSubmitting,
+    preparation,
     reloadTypes,
     removeAttachment,
-    selectAssignee,
     selectSubtype,
     selectType,
     setDescription,
     setRemarks,
-    setTitle,
     state,
     submit,
     subtypes,
     typesState,
-  } = incidentReport;
-  const isDirty = Boolean(state.type || state.subtype || state.assignee || state.title || state.description || state.remarks || attachments.length);
+  } = evidenceFlow.report;
+  const isDirty = Boolean(state.type || state.subtype || state.description || state.remarks || attachments.length || preparation);
   const allowNavigation = useUnsavedChanges(isDirty);
 
   const handleBack = useCallback((): void => router.back(), []);
   const openTypePicker = useCallback((): void => setPickerKind("type"), []);
   const openSubtypePicker = useCallback((): void => setPickerKind("subtype"), []);
-  const openAssigneePicker = useCallback((): void => setPickerKind("assignee"), []);
   const closePicker = useCallback((): void => setPickerKind(null), []);
-  
-  const openTitle = useCallback((): void => setIsTitleVisible(true), []);
-  const closeTitle = useCallback((): void => setIsTitleVisible(false), []);
   const openDescription = useCallback((): void => setIsDescriptionVisible(true), []);
   const closeDescription = useCallback((): void => setIsDescriptionVisible(false), []);
   const openRemarks = useCallback((): void => setIsRemarksVisible(true), []);
   const closeRemarks = useCallback((): void => setIsRemarksVisible(false), []);
-  const openEvidence = useCallback((): void => setIsEvidenceVisible(true), []);
-  const closeEvidence = useCallback((): void => setIsEvidenceVisible(false), []);
   const handleOptionSelect = useCallback((option: IncidentOptionViewModel): void => {
     if (pickerKind === "type") selectType(option);
     else if (pickerKind === "subtype") selectSubtype(option);
-    else if (pickerKind === "assignee") selectAssignee(option);
     setPickerKind(null);
-  }, [pickerKind, selectAssignee, selectSubtype, selectType]);
+  }, [pickerKind, selectSubtype, selectType]);
   const handleRetry = useCallback((): void => {
     void reloadTypes();
   }, [reloadTypes]);
@@ -93,38 +80,34 @@ export default function NewIncidentScreen(): ReactElement {
       ? typesState.data
       : pickerKind === "subtype"
         ? subtypes
-        : pickerKind === "assignee"
-          ? assignees
-          : [];
+        : [];
   const pickerTitle = pickerKind === "type"
     ? "Incident Type"
-    : pickerKind === "subtype"
-      ? "Incident Subtype"
-      : "Assigned To";
+    : "Incident Subtype";
 
   return (
     <ScreenContainer>
       <DetailHeader onBack={handleBack} title="Report Incident" />
       {typesState.status === "success" ? (
-        <View style={styles.body}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          style={styles.body}
+        >
           <IncidentReportForm
-            assigneeLabel={state.assignee?.label ?? ""}
             description={state.description}
             evidenceCount={attachments.length}
             isSubtypeDisabled={!state.type || isLoadingSubtypes || subtypes.length === 0}
-            onAssigneePress={openAssigneePicker}
             onDescriptionPress={openDescription}
-            onEvidencePress={openEvidence}
+            onEvidencePress={evidenceFlow.openEvidence}
             onRemarksPress={openRemarks}
             onSubtypePress={openSubtypePicker}
-            onTitlePress={openTitle}
             onTypePress={openTypePicker}
             remarks={state.remarks}
             subtypeLabel={state.subtype?.label ?? ""}
-            title={state.title}
             typeLabel={state.type?.label ?? ""}
           />
-        </View>
+        </ScrollView>
       ) : (
         <AsyncStateView
           emptyMessage="No incident types are available."
@@ -136,7 +119,10 @@ export default function NewIncidentScreen(): ReactElement {
       )}
       {typesState.status === "success" ? (
         <View style={styles.footer}>
+          {preparation ? <Text accessibilityLiveRegion="polite" style={styles.footerStatus}>Preparing evidence before submit…</Text> : null}
+          {isSubmitting && attachments.length > 0 ? <Text accessibilityLiveRegion="polite" style={styles.footerStatus}>Uploading evidence and submitting incident…</Text> : null}
           <PrimaryButton
+            isDisabled={Boolean(preparation)}
             isLoading={isSubmitting}
             label="Submit Incident"
             onPress={handleSubmit}
@@ -150,12 +136,6 @@ export default function NewIncidentScreen(): ReactElement {
         options={pickerOptions}
         title={pickerTitle}
       />
-      <BottomSheetModal accessibilityLabel="Close title editor" isVisible={isTitleVisible} onClose={closeTitle} title="Incident title">
-        <View style={styles.sheet}>
-          <FormField label="Incident title" onChangeText={setTitle} placeholder="Enter incident title" textCapitalization="sentences" value={state.title} />
-          <PrimaryButton label="Done" onPress={closeTitle} />
-        </View>
-      </BottomSheetModal>
       <BottomSheetModal accessibilityLabel="Close description editor" isVisible={isDescriptionVisible} onClose={closeDescription} title="Description">
         <View style={styles.sheet}>
           <FormField isMultiline label="Description" onChangeText={setDescription} placeholder="Describe the incident" textCapitalization="sentences" value={state.description} />
@@ -168,18 +148,21 @@ export default function NewIncidentScreen(): ReactElement {
           <PrimaryButton label="Done" onPress={closeRemarks} />
         </View>
       </BottomSheetModal>
-      <BottomSheetModal accessibilityLabel="Close evidence" isVisible={isEvidenceVisible} onClose={closeEvidence} title="Evidence">
+      <BottomSheetModal accessibilityLabel="Close evidence" isVisible={evidenceFlow.isEvidenceVisible} onClose={evidenceFlow.closeEvidence} onDismiss={evidenceFlow.handleEvidenceDismiss} title="Evidence">
         <View style={styles.sheet}>
-          <MediaAttachmentTray attachments={attachments} onAddDocument={addDocument} onAddFromGallery={addFromGallery} onAddPhoto={addPhoto} onRemove={removeAttachment} />
+          <MediaAttachmentTray attachments={attachments} onAddDocument={evidenceFlow.chooseFile} onAddFromGallery={evidenceFlow.chooseGallery} onAddPhoto={evidenceFlow.chooseCamera} onRemove={removeAttachment} preparation={preparation} supportsVideo title="Add evidence" />
         </View>
       </BottomSheetModal>
+      <EvidenceCameraModal isVisible={evidenceFlow.isCameraVisible} onCaptured={evidenceFlow.handleCameraCaptured} onClose={evidenceFlow.closeCamera} onDismiss={evidenceFlow.handleCameraDismiss} />
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
   body: { flex: 1 },
+  scrollContent: { paddingBottom: SPACING.large },
   sheet: { gap: SPACING.large, padding: SCREEN_HORIZONTAL_PADDING },
+  footerStatus: { color: COLORS.inkMuted, ...TYPOGRAPHY.caption, marginBottom: SPACING.small, textAlign: "center" },
   footer: {
     backgroundColor: COLORS.surface,
     borderTopColor: COLORS.border,

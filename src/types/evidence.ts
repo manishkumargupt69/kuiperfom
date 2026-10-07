@@ -1,5 +1,12 @@
 export type EvidenceKind = "document" | "photo" | "video" | "audio";
 
+export interface CapturedEvidence {
+  kind: "photo" | "video";
+  name: string;
+  uri: string;
+  mimeType: string;
+}
+
 export interface EvidenceAttachment {
   id: string;
   kind: EvidenceKind;

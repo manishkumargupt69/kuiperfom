@@ -18,7 +18,7 @@ interface ReportedIncidentsResult {
 const matchesSearch = (incident: IncidentViewModel, searchText: string): boolean => { 
   const search = searchText.trim().toLocaleLowerCase(); 
   if (!search) return true; 
-  return [incident.incidentNumber, incident.type, incident.subtype, incident.title, incident.description, incident.assignedToName].some((value) => value.toLocaleLowerCase().includes(search)); 
+  return [incident.incidentNumber, incident.type, incident.subtype, incident.description, incident.assignedToName].some((value) => value.toLocaleLowerCase().includes(search));
 };
 
 export const useReportedIncidents = (session: AuthSession | null, searchText: string): ReportedIncidentsResult => {

@@ -107,7 +107,7 @@ interface WorkRequestListItemDto {
   workGroupId: string;
   workSubGroupId: string;
   workItemId: string;
-  targetCompletionDate: string;
+  targetCompletionDate: string | null;
   status: string;
   progressPercent: number | null;
   remarks: string | null;
@@ -237,7 +237,7 @@ const isWorkRequestListItemDto = (
   typeof value.workGroupId === "string" &&
   typeof value.workSubGroupId === "string" &&
   typeof value.workItemId === "string" &&
-  typeof value.targetCompletionDate === "string" &&
+  isNullableString(value.targetCompletionDate) &&
   typeof value.status === "string" &&
   isNullableNumber(value.progressPercent) &&
   isNullableString(value.remarks) &&
@@ -391,6 +391,7 @@ const mapWorkRequestListDto = ({
   userNames: ReadonlyMap<string, string>;
 }): WorkItemViewModel => ({
   id: item.id,
+  projectId: item.projectId,
   requestNumber: item.requestNumber,
   workGroup: item.workGroup.itemWorkGroupName ?? "Unknown Group",
   workSubgroup: item.workSubGroup.itemWorkSubGroupName ?? "Unknown Subgroup",
@@ -400,7 +401,7 @@ const mapWorkRequestListDto = ({
   partModel: null,
   weightLabel: null,
   unitOfMeasure: null,
-  targetCompletion: item.targetCompletionDate,
+  targetCompletion: item.targetCompletionDate ?? "",
   status: STATUS_PRESENTATION[item.status] ?? {
     label: item.status,
     tone: "neutral",
@@ -425,6 +426,7 @@ const mapWorkRequestDto = ({
   userNames,
 }: WorkMappingOptions): WorkItemViewModel => ({
   id: item.id,
+  projectId: null,
   requestNumber: item.requestNumber,
   workGroup: item.workGroup.name ?? "Unknown Group",
   workSubgroup: item.workSubGroup.name ?? "Unknown Subgroup",
@@ -517,7 +519,7 @@ const appendLocalAttachments = (
     .filter((attachment) => attachment.uri.startsWith("file:"))
     .forEach((attachment) => {
       const uploadFile = getSupportedUploadFile(attachment);
-      if (!uploadFile) throw new Error("Only image, PDF, Word, and Excel files are allowed.");
+      if (!uploadFile) throw new Error("Only image, MP4, PDF, Word, and Excel files are allowed.");
       appendFormDataFile({
         formData,
         fieldName: "files",

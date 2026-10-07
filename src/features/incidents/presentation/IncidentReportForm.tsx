@@ -4,23 +4,18 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import Feather from "@expo/vector-icons/Feather";
 
 import SelectField from "@/src/components/ui/SelectField";
-import type { EvidenceAttachment } from "@/src/types/evidence";
 import { COLORS, RADII, SPACING, TYPOGRAPHY } from "@/src/theme/tokens";
 
 interface IncidentReportFormProps {
   typeLabel: string;
   subtypeLabel: string;
-  title: string;
   description: string;
-  assigneeLabel: string;
   remarks: string;
   isSubtypeDisabled: boolean;
   evidenceCount: number;
   onTypePress: () => void;
   onSubtypePress: () => void;
-  onTitlePress: () => void;
   onDescriptionPress: () => void;
-  onAssigneePress: () => void;
   onRemarksPress: () => void;
   onEvidencePress: () => void;
 }
@@ -28,17 +23,13 @@ interface IncidentReportFormProps {
 function IncidentReportForm({
   typeLabel,
   subtypeLabel,
-  title,
   description,
-  assigneeLabel,
   remarks,
   isSubtypeDisabled,
   evidenceCount,
   onTypePress,
   onSubtypePress,
-  onTitlePress,
   onDescriptionPress,
-  onAssigneePress,
   onRemarksPress,
   onEvidencePress,
 }: IncidentReportFormProps): ReactElement {
@@ -51,14 +42,6 @@ function IncidentReportForm({
       </View>
       <View style={styles.card}>
         <View style={styles.sectionHeader}><Feather color={COLORS.accent} name="edit-3" size={18} /><Text style={styles.sectionTitle}>Incident details</Text></View>
-        <SelectField label="Assigned to" onPress={onAssigneePress} placeholder="Select assignee" value={assigneeLabel} />
-        <Pressable accessibilityLabel="Edit title" accessibilityRole="button" onPress={onTitlePress} style={({ pressed }) => [styles.detailButton, pressed && styles.pressed]}>
-          <View style={styles.detailCopy}>
-            <Text style={styles.label}>Title</Text>
-            <Text numberOfLines={1} style={styles.detailValue}>{title.trim() || "—"}</Text>
-          </View>
-          <Feather color={COLORS.accent} name="edit-2" size={18} />
-        </Pressable>
         <Pressable accessibilityLabel="Edit description" accessibilityRole="button" onPress={onDescriptionPress} style={({ pressed }) => [styles.detailButton, pressed && styles.pressed]}>
           <View style={styles.detailCopy}>
             <Text style={styles.label}>Description</Text>

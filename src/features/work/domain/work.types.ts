@@ -10,6 +10,7 @@ export type WorkSortKey =
 
 export interface WorkItemViewModel {
   id: string;
+  projectId: string | null;
   requestNumber: string;
   workGroup: string;
   workSubgroup: string;

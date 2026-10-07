@@ -13,11 +13,10 @@ function IncidentItemRow({ incident, onPress }: IncidentItemRowProps): ReactElem
   const handlePress = (): void => onPress(incident);
   const classification = [incident.type, incident.subtype].filter(Boolean).join(" / ");
   return (
-    <Pressable accessibilityHint="Opens incident details" accessibilityLabel={`${incident.incidentNumber}, ${incident.title}, status ${incident.status.label}`} accessibilityRole="button" onPress={handlePress} style={({ pressed }) => [styles.container, pressed && styles.pressed]}>
-      <View style={styles.topLine}><Text style={styles.number}>{incident.incidentNumber}</Text><StatusBadge label={incident.status.label} tone={incident.status.tone} /></View>
-      <Text style={styles.title}>{incident.title}</Text>
-      <View style={styles.classificationRow}><Feather color={COLORS.accent} name="alert-circle" size={16} /><Text style={styles.classification}>{classification}</Text></View>
+    <Pressable accessibilityHint="Opens incident details" accessibilityLabel={`${incident.incidentNumber}, status ${incident.status.label}`} accessibilityRole="button" onPress={handlePress} style={({ pressed }) => [styles.container, pressed && styles.pressed]}>
+      <View style={styles.topLine}><Text numberOfLines={1} style={styles.title}>{incident.incidentNumber}</Text><StatusBadge label={incident.status.label} tone={incident.status.tone} /></View>
       <Text numberOfLines={2} style={styles.description}>{incident.description}</Text>
+      {classification ? <Text numberOfLines={1} style={styles.classification}>{classification}</Text> : null}
       {incident.remarks ? <Text numberOfLines={1} style={styles.remarks}>{incident.remarks}</Text> : null}
       {incident.attachments.length > 0 ? <View style={styles.evidenceRow}><Feather color={COLORS.accent} name="paperclip" size={15} /><Text style={styles.evidence}>{incident.attachments.length} evidence attachment{incident.attachments.length === 1 ? "" : "s"}</Text></View> : null}
     </Pressable>
@@ -27,15 +26,13 @@ function IncidentItemRow({ incident, onPress }: IncidentItemRowProps): ReactElem
 export default memo(IncidentItemRow);
 
 const styles = StyleSheet.create({
-  container: { backgroundColor: COLORS.surface, borderColor: COLORS.border, borderRadius: RADII.large, borderWidth: 1, elevation: 1, gap: SPACING.small, marginBottom: SPACING.medium, minHeight: 120, padding: SPACING.large, shadowColor: "#000000", shadowOffset: { height: 1, width: 0 }, shadowOpacity: 0.04, shadowRadius: 4 },
+  container: { backgroundColor: COLORS.surface, borderColor: COLORS.border, borderRadius: RADII.large, borderWidth: 1, gap: SPACING.medium, marginBottom: SPACING.medium, minHeight: 120, padding: SPACING.large },
   pressed: { backgroundColor: COLORS.accentSoft, borderColor: COLORS.accent, opacity: 0.9 },
   topLine: { alignItems: "center", flexDirection: "row", gap: SPACING.medium, justifyContent: "space-between" },
-  number: { color: COLORS.accent, ...TYPOGRAPHY.caption, fontWeight: "800", letterSpacing: 0.5 },
-  title: { color: COLORS.ink, fontSize: 18, fontWeight: "700", lineHeight: 24 },
-  classificationRow: { alignItems: "center", flexDirection: "row", gap: SPACING.small },
-  classification: { color: COLORS.inkMuted, ...TYPOGRAPHY.caption },
-  description: { color: COLORS.inkMuted, ...TYPOGRAPHY.body },
-  remarks: { color: COLORS.inkMuted, ...TYPOGRAPHY.caption },
+  title: { color: COLORS.ink, flex: 1, fontFamily: "IBMPlexSans_700Bold", fontSize: 18, lineHeight: 24 },
+  classification: { color: COLORS.accent, fontSize: 13, fontWeight: "600", lineHeight: 18 },
+  description: { color: COLORS.ink, fontSize: 16, fontWeight: "500", lineHeight: 23 },
+  remarks: { color: COLORS.inkMuted, fontSize: 13, lineHeight: 19 },
   evidence: { color: COLORS.accent, ...TYPOGRAPHY.caption, fontWeight: "600" },
-  evidenceRow: { alignItems: "center", flexDirection: "row", gap: SPACING.small },
+  evidenceRow: { alignItems: "center", borderTopColor: COLORS.border, borderTopWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: SPACING.small, paddingTop: SPACING.medium },
 });
