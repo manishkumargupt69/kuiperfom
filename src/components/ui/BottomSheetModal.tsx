@@ -24,6 +24,7 @@ interface BottomSheetModalProps extends PropsWithChildren {
   isVisible: boolean;
   title: string;
   onClose: () => void;
+  onDismiss?: () => void;
 }
 
 const BOTTOM_SAFE_AREA_EDGES = ["bottom"] as const;
@@ -34,10 +35,12 @@ export default function BottomSheetModal({
   isVisible,
   title,
   onClose,
+  onDismiss,
 }: BottomSheetModalProps): ReactElement {
   return (
     <Modal
       animationType="slide"
+      onDismiss={onDismiss}
       onRequestClose={onClose}
       statusBarTranslucent
       transparent
