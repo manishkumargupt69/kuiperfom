@@ -14,12 +14,12 @@ import { useUnsavedChanges } from "@/src/hooks/use-unsaved-changes";
 import { COLORS, SCREEN_HORIZONTAL_PADDING, SPACING } from "@/src/theme/tokens";
 import { showSuccessMessage } from "@/src/utils/show-success-message";
 
-type WorkAuditParams = { id: string };
+type WorkAuditParams = { id: string; projectId?: string };
 const getErrorMessage = (error: unknown): string => error instanceof Error ? error.message : "Try again.";
 
 export default function WorkAuditScreen(): ReactElement {
-  const { id } = useLocalSearchParams<WorkAuditParams>();
-  const audit = useWorkAudit(id);
+  const { id, projectId } = useLocalSearchParams<WorkAuditParams>();
+  const audit = useWorkAudit(id, projectId);
   const { reload, save } = audit;
   const allowNavigation = useUnsavedChanges(Boolean(audit.remarks.length || audit.attachments.length));
   const handleBack = useCallback((): void => router.back(), []);

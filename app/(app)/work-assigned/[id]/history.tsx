@@ -5,6 +5,7 @@ import { router, useLocalSearchParams } from "expo-router";
 
 import DetailHeader from "@/src/components/ui/DetailHeader";
 import AsyncStateView from "@/src/components/ui/AsyncStateView";
+import EmptyListState from "@/src/components/ui/EmptyListState";
 import ScreenContainer from "@/src/components/ui/ScreenContainer";
 import SearchField from "@/src/components/ui/SearchField";
 import type { WorkHistoryViewModel } from "@/src/features/work/domain/work.types";
@@ -42,7 +43,7 @@ export default function WorkHistoryScreen(): ReactElement {
           data={entries}
           keyExtractor={getHistoryKey}
           ListHeaderComponent={<View style={styles.header}><Text accessibilityRole="header" style={styles.title}>Update history</Text><SearchField accessibilityLabel="Search history by date" onChangeText={setDateSearch} onClear={clearSearch} placeholder="Search date" value={dateSearch} /></View>}
-          ListEmptyComponent={<Text style={styles.empty}>No updates match this date.</Text>}
+          ListEmptyComponent={<EmptyListState message="No updates match this date." />}
           renderItem={renderEntry}
           showsVerticalScrollIndicator={false}
         />
@@ -58,5 +59,4 @@ const styles = StyleSheet.create({
   state: { flex: 1, paddingHorizontal: SCREEN_HORIZONTAL_PADDING },
   header: { gap: SPACING.medium, paddingVertical: SPACING.large },
   title: { color: COLORS.ink, ...TYPOGRAPHY.sectionTitle, fontWeight: "800" },
-  empty: { color: COLORS.inkMuted, ...TYPOGRAPHY.body, paddingVertical: SPACING.extraLarge },
 });

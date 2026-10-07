@@ -14,9 +14,10 @@ interface WorkItemRowProps {
   item: WorkItemViewModel;
   onToggle: (item: WorkItemViewModel) => void;
   onUpdate: (item: WorkItemViewModel) => void;
+  onAudit: (item: WorkItemViewModel) => void;
 }
 
-function WorkItemRow({ isExpanded, item, onToggle, onUpdate }: WorkItemRowProps): ReactElement {
+function WorkItemRow({ isExpanded, item, onToggle, onUpdate, onAudit }: WorkItemRowProps): ReactElement {
   const photoUri = item.attachments.find((attachment) => attachment.kind === "photo")?.uri;
   const photoSource = useMemo(() => photoUri ? { uri: photoUri } : undefined, [photoUri]);
   const completionLabel = item.completionPercentage === null
@@ -24,6 +25,7 @@ function WorkItemRow({ isExpanded, item, onToggle, onUpdate }: WorkItemRowProps)
     : `${item.completionPercentage}% complete`;
   const handleToggle = (): void => onToggle(item);
   const handleUpdate = (): void => onUpdate(item);
+  const handleAudit = (): void => onAudit(item);
 
   return (
     <View style={styles.container}>
@@ -47,6 +49,10 @@ function WorkItemRow({ isExpanded, item, onToggle, onUpdate }: WorkItemRowProps)
             <Feather color={COLORS.inkMuted} name={isExpanded ? "chevron-up" : "chevron-down"} size={18} />
           </View>
         </Pressable>
+        <View style={styles.actions}>
+        <Pressable accessibilityLabel={`Audit ${item.requestNumber}`} accessibilityRole="button" onPress={handleAudit} style={({ pressed }) => [styles.updateButton, pressed && styles.updatePressed]}>
+          <Feather color={COLORS.accent} name="check-square" size={19} />
+        </Pressable>
         <Pressable
           accessibilityLabel={`Update ${item.requestNumber}`}
           accessibilityRole="button"
@@ -55,6 +61,7 @@ function WorkItemRow({ isExpanded, item, onToggle, onUpdate }: WorkItemRowProps)
         >
           <Feather color={COLORS.accent} name="edit-2" size={19} />
         </Pressable>
+        </View>
       </View>
 
       {isExpanded ? (
@@ -111,6 +118,7 @@ const styles = StyleSheet.create({
   dueDate: { color: COLORS.inkMuted, ...TYPOGRAPHY.caption, flex: 1, fontWeight: "600" },
   updateButton: { alignItems: "center", backgroundColor: COLORS.accentSoft, borderRadius: RADII.pill, justifyContent: "center", marginRight: SPACING.medium, minHeight: MINIMUM_TOUCH_SIZE, minWidth: MINIMUM_TOUCH_SIZE },
   updatePressed: { backgroundColor: COLORS.border },
+  actions: { alignItems: "center", flexDirection: "row" },
   details: { borderTopColor: COLORS.border, borderTopWidth: 1, gap: SPACING.small, padding: SPACING.large },
   hero: { alignItems: "center", flexDirection: "row", gap: SPACING.medium, justifyContent: "space-between" },
   group: { color: COLORS.inkMuted, ...TYPOGRAPHY.body, flex: 1, fontWeight: "500" },

@@ -11,6 +11,7 @@ import SecondaryButton from "@/src/components/ui/SecondaryButton";
 import type { WorkItemViewModel } from "@/src/features/work/domain/work.types";
 import { useWorkAssignedScreen } from "@/src/features/work/hooks/use-work-assigned-screen";
 import WorkItemRow from "@/src/features/work/presentation/WorkItemRow";
+import WorkAssignedStateView from "@/src/features/work/presentation/WorkAssignedStateView";
 import WorkSortPicker from "@/src/features/work/presentation/WorkSortPicker";
 import { SCREEN_HORIZONTAL_PADDING, SPACING } from "@/src/theme/tokens";
 
@@ -35,9 +36,12 @@ export default function WorkAssignedScreen(): ReactElement {
   const openWorkItem = useCallback((item: WorkItemViewModel): void => {
     router.push({ pathname: "/(app)/work-assigned/[id]", params: { id: item.id } });
   }, []);
+  const openAudit = useCallback((item: WorkItemViewModel): void => {
+    router.push({ pathname: "/(app)/audit-work-items/[id]", params: { id: item.id, projectId: item.projectId ?? "" } });
+  }, []);
   const renderItem = useCallback(({ item }: { item: WorkItemViewModel }): ReactElement => (
-    <WorkItemRow isExpanded={expandedWorkId === item.id} item={item} onToggle={toggleWorkItem} onUpdate={openWorkItem} />
-  ), [expandedWorkId, openWorkItem, toggleWorkItem]);
+    <WorkItemRow isExpanded={expandedWorkId === item.id} item={item} onToggle={toggleWorkItem} onUpdate={openWorkItem} onAudit={openAudit} />
+  ), [expandedWorkId, openAudit, openWorkItem, toggleWorkItem]);
   const keyExtractor = useCallback((item: WorkItemViewModel): string => item.id, []);
   const renderFooter = useCallback(
     () =>
@@ -69,7 +73,15 @@ export default function WorkAssignedScreen(): ReactElement {
           ListFooterComponent={renderFooter}
         />
       ) : (
-        <View style={styles.state}><AsyncStateView emptyMessage="No assigned work found." message={viewState.status === "error" ? viewState.message : undefined} onRetry={handleRetry} status={viewState.status} variant="list" /></View>
+        <View style={styles.state}>
+          {viewState.status === "empty" || viewState.status === "error" ? (
+            <View style={styles.feedback}>
+              <WorkAssignedStateView onRetry={handleRetry} status={viewState.status} />
+            </View>
+          ) : (
+            <AsyncStateView emptyMessage="No assigned work found." onRetry={handleRetry} status={viewState.status} variant="list" />
+          )}
+        </View>
       )}
       <WorkSortPicker
         isVisible={isSortVisible}
@@ -85,5 +97,6 @@ const styles = StyleSheet.create({
   tools: { flexDirection: "row", gap: SPACING.small, paddingHorizontal: SCREEN_HORIZONTAL_PADDING, paddingVertical: SPACING.medium },
   list: { paddingBottom: SPACING.section, paddingHorizontal: SCREEN_HORIZONTAL_PADDING },
   state: { flex: 1, paddingHorizontal: SCREEN_HORIZONTAL_PADDING },
+  feedback: { flex: 1, justifyContent: "center" },
   footerLoader: { paddingVertical: SPACING.medium, alignItems: "center", justifyContent: "center" },
 });

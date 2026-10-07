@@ -31,9 +31,9 @@ interface WorkAuditResult {
   reload: () => Promise<void>;
 }
 
-export const useWorkAudit = (id: string): WorkAuditResult => {
+export const useWorkAudit = (id: string, projectId?: string): WorkAuditResult => {
   const selectedProject = useDashboardStore((state) => state.selectedProject);
-  const { viewState: projectState, reload } = useProjectDetails(selectedProject?.id ?? null);
+  const { viewState: projectState, reload } = useProjectDetails(projectId || selectedProject?.id || null);
   const session = useAuthStore((state) => state.session);
   const [remarks, setRemarks] = useState("");
   const evidence = useEvidenceAttachments();

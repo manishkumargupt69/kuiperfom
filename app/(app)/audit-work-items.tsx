@@ -5,6 +5,7 @@ import { router } from "expo-router";
 
 import DetailHeader from "@/src/components/ui/DetailHeader";
 import AsyncStateView from "@/src/components/ui/AsyncStateView";
+import EmptyListState from "@/src/components/ui/EmptyListState";
 import ScreenContainer from "@/src/components/ui/ScreenContainer";
 import SearchField from "@/src/components/ui/SearchField";
 import type { DashboardWorkItemViewModel } from "@/src/features/dashboard/domain/dashboard.types";
@@ -69,7 +70,7 @@ export default function AuditWorkItemsScreen(): ReactElement {
           contentContainerStyle={styles.list}
           data={items}
           keyExtractor={getItemKey}
-          ListEmptyComponent={<Text style={styles.empty}>No work items match this date range and search.</Text>}
+          ListEmptyComponent={<EmptyListState message="No work items match this date range and search." />}
           ListHeaderComponent={renderHeader}
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
@@ -95,5 +96,4 @@ const styles = StyleSheet.create({
   header: { gap: SPACING.medium, marginBottom: SPACING.medium },
   title: { color: COLORS.ink, ...TYPOGRAPHY.sectionTitle, fontWeight: "800", marginTop: SPACING.small },
   hint: { color: COLORS.inkMuted, ...TYPOGRAPHY.caption },
-  empty: { color: COLORS.inkMuted, ...TYPOGRAPHY.body, paddingVertical: SPACING.extraLarge },
 });
