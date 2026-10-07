@@ -5,6 +5,7 @@ import { router, usePathname } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 
 import { useAppNavigation } from "@/src/components/navigation/AppNavigationContext";
+import { useProfilePhoto } from "@/src/features/auth/hooks/use-profile-photo";
 import { useAuthStore } from "@/src/features/auth/state/auth-store";
 import { clientRepository } from "@/src/features/client/data/client.repository";
 import type { ModuleKey, ModuleViewModel } from "@/src/features/modules/domain/module.types";
@@ -13,9 +14,9 @@ import AppDrawerView from "@/src/features/modules/presentation/AppDrawerView";
 import { showMessage } from "@/src/utils/show-success-message";
 
 const CLIENT_QUERY_KEY = "current-client";
-const MODULE_ROUTES: Record<ModuleKey, "/(app)/(tabs)/work-assigned" | "/(app)/incidents"> = {
+const MODULE_ROUTES: Record<ModuleKey, "/(app)/(tabs)/work-assigned" | "/(app)/(tabs)/incidents"> = {
   "work-assigned": "/(app)/(tabs)/work-assigned",
-  incidents: "/(app)/incidents",
+  incidents: "/(app)/(tabs)/incidents",
 };
 
 interface AppDrawerContentProps { onClose: () => void; }
@@ -28,6 +29,7 @@ export default function AppDrawerContent({ onClose }: AppDrawerContentProps): Re
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const clientId = session?.user.clientId;
   const { viewState: modulesState, reload: reloadModules } = usePermittedModules(session);
+  const { viewState: photoState } = useProfilePhoto(session);
   const clientQuery = useQuery({
     queryKey: [CLIENT_QUERY_KEY, session?.user.id, clientId],
     queryFn: () => session && clientId !== undefined
@@ -48,7 +50,9 @@ export default function AppDrawerContent({ onClose }: AppDrawerContentProps): Re
       showMessage("Module not implemented yet.");
       return;
     }
-    requestNavigation(() => router.push(MODULE_ROUTES[moduleKey]));
+    requestNavigation(() => moduleKey === "incidents"
+      ? router.navigate(MODULE_ROUTES.incidents)
+      : router.push(MODULE_ROUTES[moduleKey]));
   }, [onClose, requestNavigation]);
   const retryModules = useCallback((): void => { void reloadModules(); }, [reloadModules]);
   const handleLogout = useCallback(async (): Promise<void> => {
@@ -69,6 +73,7 @@ export default function AppDrawerContent({ onClose }: AppDrawerContentProps): Re
       clientName={clientName}
       isLoggingOut={isLoggingOut}
       modulesState={modulesState}
+      photoState={photoState}
       onClose={onClose}
       onDashboard={openDashboard}
       onLogout={requestLogout}

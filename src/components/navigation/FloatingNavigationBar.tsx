@@ -34,6 +34,9 @@ export default function FloatingNavigationBar(): ReactElement | null {
   const openProfile = useCallback((): void => {
     requestNavigation(() => router.navigate("/(app)/(tabs)/profile"));
   }, [requestNavigation]);
+  const openIncidents = useCallback((): void => {
+    requestNavigation(() => router.navigate("/(app)/(tabs)/incidents"));
+  }, [requestNavigation]);
 
   if (!isVisible) return null;
 
@@ -47,6 +50,10 @@ export default function FloatingNavigationBar(): ReactElement | null {
         <Pressable accessibilityLabel="Projects by city" accessibilityRole="tab" accessibilityState={{ selected: false }} onPress={openProjects} style={({ pressed }) => [styles.tab, pressed && styles.pressed]}>
           <Ionicons color={COLORS.inkMuted} name="location-outline" size={23} />
           <Text style={styles.label}>Projects</Text>
+        </Pressable>
+        <Pressable accessibilityLabel="Incidents" accessibilityRole="tab" accessibilityState={{ selected: false }} onPress={openIncidents} style={({ pressed }) => [styles.tab, pressed && styles.pressed]}>
+          <Ionicons color={COLORS.inkMuted} name="document-text-outline" size={23} />
+          <Text style={styles.label}>Incidents</Text>
         </Pressable>
         <Pressable accessibilityLabel="Profile" accessibilityRole="tab" accessibilityState={{ selected: false }} onPress={openProfile} style={({ pressed }) => [styles.tab, pressed && styles.pressed]}>
           <Ionicons color={COLORS.inkMuted} name="person-outline" size={23} />

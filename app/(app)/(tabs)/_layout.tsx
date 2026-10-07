@@ -57,6 +57,18 @@ export default function AppTabsLayout(): ReactElement {
         }}
       />
       <Tabs.Screen
+        name="incidents"
+        options={{
+          title: "Incidents",
+          tabBarAccessibilityLabel: "Incidents",
+          tabBarIcon: ({ color, size, focused }) => (
+            <View style={[styles.icon, focused && styles.activeIcon]}>
+              <Ionicons color={color} name={focused ? "document-text" : "document-text-outline"} size={size} />
+            </View>
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",

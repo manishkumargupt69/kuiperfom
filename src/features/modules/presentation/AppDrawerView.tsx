@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { useCallback, useMemo, useState } from "react";
 import type { ListRenderItemInfo } from "react-native";
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import Feather from "@expo/vector-icons/Feather";
 import { DrawerItem } from "@react-navigation/drawer";
 
@@ -21,6 +21,7 @@ interface AppDrawerViewProps {
   clientName: string;
   isLoggingOut: boolean;
   modulesState: ViewState<ModuleViewModel[]>;
+  photoState: ViewState<string>;
   onClose: () => void;
   onDashboard: () => void;
   onLogout: () => void;
@@ -41,7 +42,7 @@ const getVisibleModules = (modules: readonly ModuleViewModel[], expandedIds: Rea
 
 const getModuleKey = (entry: DrawerModuleEntry): string => entry.module.id;
 
-export default function AppDrawerView({ clientName, isLoggingOut, modulesState, onClose, onDashboard, onLogout, onModulePress, onProfile, onProjectMaster, onRetryModules, selectedRoute, userEmail, userName }: AppDrawerViewProps): ReactElement {
+export default function AppDrawerView({ clientName, isLoggingOut, modulesState, photoState, onClose, onDashboard, onLogout, onModulePress, onProfile, onProjectMaster, onRetryModules, selectedRoute, userEmail, userName }: AppDrawerViewProps): ReactElement {
   const [expandedModuleIds, setExpandedModuleIds] = useState<ReadonlySet<string>>(new Set());
   const visibleModules = useMemo(
     () => modulesState.status === "success" ? getVisibleModules(modulesState.data, expandedModuleIds) : [],
@@ -76,17 +77,25 @@ export default function AppDrawerView({ clientName, isLoggingOut, modulesState, 
         <>
           <View style={styles.hero}>
             <View style={styles.heroTop}>
-              <Pressable accessibilityLabel={`Open profile for ${userName || "user"}`} accessibilityRole="button" onPress={onProfile} style={({ pressed }) => [styles.avatar, pressed && styles.avatarPressed]}>
-                <Feather accessibilityElementsHidden color={COLORS.accent} name="user" size={26} />
-              </Pressable>
+              <View style={styles.brand}>
+                <Image accessibilityLabel="SiteGuard247 logo" source={require("@/assets/images/icon.png")} style={styles.brandIcon} />
+                <Text numberOfLines={1} style={styles.brandName}>SiteGuard247</Text>
+              </View>
               <Pressable accessibilityLabel="Close menu" accessibilityRole="button" onPress={onClose} style={({ pressed }) => [styles.closeButton, pressed && styles.heroButtonPressed]}>
                 <Feather accessibilityElementsHidden color={COLORS.white} name="menu" size={21} />
               </Pressable>
             </View>
             <Pressable accessibilityLabel={`Open profile for ${userName || "user"}`} accessibilityRole="button" onPress={onProfile} style={({ pressed }) => [styles.profile, pressed && styles.heroButtonPressed]}>
-              <Text numberOfLines={1} style={styles.userName}>{userName}</Text>
-              <Text numberOfLines={1} style={styles.userEmail}>{userEmail}</Text>
-              {clientName ? <Text numberOfLines={1} style={styles.clientName}>{clientName}</Text> : null}
+              <View accessibilityElementsHidden style={styles.avatar}>
+                {photoState.status === "success"
+                  ? <Image resizeMode="cover" source={{ uri: photoState.data }} style={styles.avatarImage} />
+                  : <Feather color={COLORS.accent} name="user" size={26} />}
+              </View>
+              <View style={styles.profileCopy}>
+                <Text numberOfLines={1} style={styles.userName}>{userName}</Text>
+                <Text numberOfLines={1} style={styles.userEmail}>{userEmail}</Text>
+                {clientName ? <Text numberOfLines={1} style={styles.clientName}>{clientName}</Text> : null}
+              </View>
             </Pressable>
           </View>
 
@@ -127,13 +136,17 @@ const styles = StyleSheet.create({
   drawer: { backgroundColor: COLORS.drawerSurface, borderBottomRightRadius: RADII.sheet, borderTopRightRadius: RADII.sheet, flex: 1, overflow: "hidden" },
   list: { flex: 1 },
   content: { flexGrow: 1 },
-  hero: { backgroundColor: COLORS.drawerHeader, minHeight: 184, paddingBottom: SPACING.large, paddingHorizontal: SPACING.extraLarge, paddingTop: SPACING.medium },
+  hero: { backgroundColor: COLORS.drawerHeader, gap: SPACING.large, paddingBottom: SPACING.extraLarge, paddingHorizontal: SPACING.extraLarge, paddingTop: SPACING.medium },
   heroTop: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
+  brand: { alignItems: "center", flex: 1, flexDirection: "row", gap: SPACING.small },
+  brandIcon: { borderRadius: RADII.medium, height: 40, width: 40 },
+  brandName: { color: COLORS.white, ...TYPOGRAPHY.control, flexShrink: 1, fontWeight: "800" },
   closeButton: { alignItems: "center", borderRadius: RADII.medium, height: MINIMUM_TOUCH_SIZE, justifyContent: "center", width: MINIMUM_TOUCH_SIZE },
   heroButtonPressed: { backgroundColor: "rgba(255, 255, 255, 0.16)" },
-  profile: { borderRadius: RADII.medium, marginTop: SPACING.medium, paddingVertical: SPACING.extraSmall },
-  avatar: { alignItems: "center", backgroundColor: COLORS.white, borderRadius: RADII.pill, height: MINIMUM_TOUCH_SIZE, justifyContent: "center", width: MINIMUM_TOUCH_SIZE },
-  avatarPressed: { backgroundColor: COLORS.accentSoft },
+  profile: { alignItems: "center", borderRadius: RADII.medium, flexDirection: "row", gap: SPACING.medium, minHeight: MINIMUM_TOUCH_SIZE, paddingVertical: SPACING.extraSmall },
+  profileCopy: { flex: 1 },
+  avatar: { alignItems: "center", backgroundColor: COLORS.white, borderRadius: RADII.pill, height: MINIMUM_TOUCH_SIZE, justifyContent: "center", overflow: "hidden", width: MINIMUM_TOUCH_SIZE },
+  avatarImage: { height: MINIMUM_TOUCH_SIZE, width: MINIMUM_TOUCH_SIZE },
   userName: { color: COLORS.white, ...TYPOGRAPHY.control, fontWeight: "700" },
   userEmail: { color: COLORS.white, ...TYPOGRAPHY.caption, marginTop: SPACING.extraSmall, opacity: 0.95 },
   clientName: { color: COLORS.white, ...TYPOGRAPHY.caption, marginTop: SPACING.extraSmall, opacity: 0.8 },

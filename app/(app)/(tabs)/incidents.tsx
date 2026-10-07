@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import { ActivityIndicator, FlatList, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
 
-import DetailHeader from "@/src/components/ui/DetailHeader";
+import DrawerHeader from "@/src/components/ui/DrawerHeader";
 import AsyncStateView from "@/src/components/ui/AsyncStateView";
 import PrimaryButton from "@/src/components/ui/PrimaryButton";
 import ScreenContainer from "@/src/components/ui/ScreenContainer";
@@ -18,7 +18,6 @@ export default function IncidentsScreen(): ReactElement {
   const [searchText, setSearchText] = useState("");
   const session = useAuthStore((state) => state.session);
   const { viewState, reload, loadMore, isFetchingNextPage } = useReportedIncidents(session, searchText);
-  const handleBack = useCallback((): void => router.back(), []);
   const clearSearch = useCallback((): void => setSearchText(""), []);
   const reportIncident = useCallback((): void => router.push("/(app)/incidents/new"), []);
   const openIncident = useCallback((incident: IncidentViewModel): void => { router.push({ pathname: "/(app)/incidents/[id]", params: { id: incident.id } }); }, []);
@@ -38,7 +37,7 @@ export default function IncidentsScreen(): ReactElement {
 
   return (
     <ScreenContainer>
-      <DetailHeader onBack={handleBack} title="Incidents" />
+      <DrawerHeader title="Incidents" />
       <View style={styles.tools}><SearchField accessibilityLabel="Search incidents" onChangeText={setSearchText} onClear={clearSearch} placeholder="Search incidents" value={searchText} /></View>
       <View style={styles.body}>
         {viewState.status === "success" ? (

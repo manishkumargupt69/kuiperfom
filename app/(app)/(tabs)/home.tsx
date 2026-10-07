@@ -15,10 +15,10 @@ import { SCREEN_HORIZONTAL_PADDING, SPACING, TYPOGRAPHY, COLORS } from "@/src/th
 import { showMessage } from "@/src/utils/show-success-message";
 
 const MODULE_GRID_COLUMNS = 2;
-const MODULE_ROUTES: Record<ModuleKey, "/(app)/(tabs)/work-assigned" | "/(app)/incidents"> = { "work-assigned": "/(app)/(tabs)/work-assigned", incidents: "/(app)/incidents" };
+const MODULE_ROUTES: Record<ModuleKey, "/(app)/(tabs)/work-assigned" | "/(app)/(tabs)/incidents"> = { "work-assigned": "/(app)/(tabs)/work-assigned", incidents: "/(app)/(tabs)/incidents" };
 const MODULE_ACTIONS: Record<ModuleKey, () => void> = {
   "work-assigned": () => router.push(MODULE_ROUTES["work-assigned"]),
-  incidents: () => router.push(MODULE_ROUTES.incidents),
+  incidents: () => router.navigate(MODULE_ROUTES.incidents),
 };
 
 const openModule = (module: ModuleViewModel): void => {
